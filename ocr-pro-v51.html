@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>OCR Pro v6.2 — Google Vision OCR + Gemini AI 구조화 파싱 + HEIC 지원</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<!-- heic2any: HEIC 필요 시 동적 로딩 -->
+<script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";</script>
+<style>
+*{font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f3f4f6;--card:#fff;--card2:#f9fafb;--pri:#2563eb;--pri2:#1d4ed8;--pri-l:#eff6ff;--grn:#10b981;--grn-l:#ecfdf5;--red:#ef4444;--red-l:#fef2f2;--org:#f59e0b;--org-l:#fffbeb;--vio:#7c3aed;--vio-l:#f5f3ff;--txt:#111827;--sub:#6b7280;--mut:#9ca3af;--bdr:#e5e7eb;--bdr2:#d1d5db;--sh:0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05);--r:12px}
+body{margin:0;background:var(--bg);color:var(--txt)}
+.app{min-height:100vh;padding:16px 12px 48px}.inner{max-width:1240px;margin:0 auto}
+.hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.logo{width:40px;height:40px;background:linear-gradient(135deg,var(--pri),var(--vio));border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo svg{width:20px;height:20px;fill:#fff}
+.hdr h1{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.hdr .ver{font-size:11px;background:var(--grn-l);color:var(--grn);padding:2px 8px;border-radius:20px;font-weight:700}
+.btn-xs{font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--bdr);background:var(--card);color:var(--sub);cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-xs:hover{border-color:var(--pri);color:var(--pri)}
+.exh-row{display:flex;align-items:center;gap:10px;background:var(--card);padding:10px 14px;border-radius:var(--r);box-shadow:var(--sh);margin-bottom:12px;flex-wrap:wrap}
+.exh-label{font-size:13px;font-weight:600;color:var(--txt);white-space:nowrap}
+.exh-input{flex:1;min-width:180px;border:1.5px solid var(--bdr);border-radius:8px;padding:8px 12px;font-size:13px;outline:none;background:var(--card2)}
+.exh-input:focus{border-color:var(--pri)}
+.exh-tag{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--card2);color:var(--sub);border:1px solid var(--bdr);white-space:nowrap}
+.input-tabs{display:flex;gap:4px;background:var(--card);border-radius:var(--r);padding:4px;box-shadow:var(--sh);margin-bottom:12px}
+.itab{flex:1;padding:10px 14px;border:none;background:transparent;color:var(--sub);font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;transition:all .2s;text-align:center;display:flex;align-items:center;justify-content:center;gap:5px}
+.itab:hover{color:var(--txt);background:var(--card2)}
+.itab.active{background:var(--pri);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.25)}
+.ipanel{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:20px;margin-bottom:12px;animation:fadeIn .25s}
+.ipanel.hidden{display:none}
+.drop{border:2px dashed var(--bdr2);border-radius:10px;padding:36px 20px;text-align:center;cursor:pointer;transition:all .25s;background:var(--card2)}
+.drop.on{border-color:var(--pri);background:var(--pri-l)}
+.drop:hover{border-color:var(--pri)}
+.drop-icon{font-size:32px;margin-bottom:8px}
+.drop-title{font-size:15px;font-weight:600;margin-bottom:4px}
+.drop-sub{font-size:12px;color:var(--sub);margin-bottom:12px}
+.drop-btn{background:var(--pri);color:#fff;font-size:12px;font-weight:600;padding:8px 18px;border-radius:8px;border:none;cursor:pointer}
+/* 이미지 미리보기 리스트 */
+.preview-list{margin-top:16px;display:flex;flex-wrap:wrap;gap:10px}
+.preview-item{background:var(--card2);border:1.5px solid var(--bdr);border-radius:10px;padding:8px;width:130px;text-align:center;position:relative;animation:fadeIn .3s}
+.preview-item img{width:110px;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--bdr)}
+.preview-item .pname{font-size:10px;color:var(--sub);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preview-item .premove{position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;border:none;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.8}
+.preview-item .premove:hover{opacity:1}
+.preview-actions{margin-top:12px;display:flex;gap:8px;align-items:center}
+.preview-actions.hidden{display:none}
+.url-area{width:100%;min-height:100px;border:1.5px solid var(--bdr);border-radius:8px;padding:10px 12px;font-size:13px;outline:none;background:var(--card2);resize:vertical;font-family:inherit;line-height:1.7}
+.url-area:focus{border-color:var(--pri)}
+.url-hint{font-size:11px;color:var(--sub);margin-top:6px}
+.url-actions{display:flex;gap:6px;margin-top:10px}
+.btn{padding:9px 18px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:disabled{opacity:.5;cursor:not-allowed;pointer-events:none}
+.btn-pri{background:var(--pri);color:#fff}.btn-pri:hover{background:var(--pri2)}
+.btn-grn{background:var(--grn);color:#fff}.btn-grn:hover{background:#059669}
+.btn-org{background:var(--org);color:#fff}.btn-org:hover{background:#d97706}
+.btn-vio{background:var(--vio);color:#fff}.btn-vio:hover{background:#6d28d9}
+.btn-red{background:var(--red-l);color:var(--red);border:1px solid #fca5a5}.btn-red:hover{background:var(--red);color:#fff}
+.btn-out{background:var(--card);color:var(--sub);border:1px solid var(--bdr)}.btn-out:hover{border-color:var(--pri);color:var(--pri)}
+.btn-google{background:#4285f4;color:#fff;border:none}.btn-google:hover{background:#3367d6}
+.cnt-badge{font-size:11px;background:rgba(255,255,255,.3);padding:1px 7px;border-radius:20px;font-weight:700}
+.action-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.pbox{background:var(--card);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);margin-bottom:12px;animation:fadeIn .3s}
+.pbox.hidden{display:none}
+.ptop{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.plbl{font-size:13px;font-weight:600;color:var(--txt);display:flex;align-items:center;gap:6px}
+.pnum{font-size:12px;color:var(--pri);font-weight:700}
+.pbar{background:var(--bg);border-radius:6px;height:6px;overflow:hidden}
+.pfill{height:100%;background:linear-gradient(90deg,var(--pri),var(--vio));border-radius:6px;transition:width .4s}
+.panim{animation:barPulse 1.4s ease-in-out infinite alternate}
+@keyframes barPulse{from{width:15%}to{width:85%}}
+.tbl-wrap{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);overflow-x:auto;margin-bottom:12px}
+.tbl-wrap.hidden{display:none}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:1200px}
+thead{background:var(--card2);position:sticky;top:0;z-index:2}
+th{padding:9px 8px;text-align:left;font-weight:600;color:var(--sub);font-size:11px;border-bottom:2px solid var(--bdr);white-space:nowrap}
+td{padding:8px 8px;border-bottom:1px solid var(--bdr);vertical-align:middle}
+tr:hover td{background:var(--pri-l)}
+.ck{width:16px;height:16px;accent-color:var(--pri);cursor:pointer}
+.thumb{width:28px;height:28px;border-radius:5px;object-fit:cover;border:1px solid var(--bdr)}
+.src-badge{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap}
+.src-img{background:var(--pri-l);color:var(--pri)}
+.src-doc{background:var(--grn-l);color:var(--grn)}
+.src-url{background:var(--vio-l);color:var(--vio)}
+.src-qr{background:#fef3c7;color:#d97706}
+.qr-badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:8px;background:#fef3c7;color:#d97706;font-weight:700;margin-left:4px;vertical-align:middle}
+.st{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:3px 7px;border-radius:20px;white-space:nowrap}
+.st-wait{background:var(--card2);color:var(--sub)}
+.st-progress{background:var(--pri-l);color:var(--pri);animation:pulse .8s infinite}
+.st-done{background:var(--grn-l);color:var(--grn)}
+.st-error{background:var(--red-l);color:var(--red)}
+.rel{font-size:10px;font-weight:700;padding:3px 7px;border-radius:20px;display:inline-block}
+.rel-high{background:var(--grn-l);color:var(--grn)}.rel-mid{background:var(--org-l);color:var(--org)}.rel-low{background:var(--red-l);color:var(--red)}
+.rm-btn{width:20px;height:20px;border-radius:50%;background:var(--card2);border:1px solid var(--bdr);cursor:pointer;font-size:10px;color:var(--sub);display:inline-flex;align-items:center;justify-content:center;transition:all .15s}
+.rm-btn:hover{background:var(--red-l);border-color:var(--red);color:var(--red)}
+.gsearch-btn{width:20px;height:20px;border-radius:50%;background:#4285f4;border:none;cursor:pointer;font-size:10px;color:#fff;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;margin-right:2px}
+.gsearch-btn:hover{background:#3367d6}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;display:inline-block;vertical-align:middle}
+/* 셀 편집 */
+td[contenteditable]{cursor:text;outline:none;border-radius:4px;transition:background .15s}
+td[contenteditable]:focus{background:var(--pri-l);box-shadow:inset 0 0 0 1.5px var(--pri)}
+td[contenteditable]:hover{background:var(--card2)}
+.cnt-row{display:flex;justify-content:flex-end;font-size:12px;color:var(--sub);padding:4px 0;gap:12px}.cnt-row.hidden{display:none}
+.cnt-item{display:flex;align-items:center;gap:4px}
+.cnt-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.hidden{display:none}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;animation:fadeIn .3s;box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.toast.success{background:var(--grn)}.toast.error{background:var(--red)}
+.edit-hint{font-size:11px;color:var(--mut);padding:4px 8px;display:flex;align-items:center;gap:4px}
+.ocr-progress{margin-top:12px;padding:12px;background:var(--card2);border-radius:8px;border:1px solid var(--bdr);font-size:12px;color:var(--sub)}
+.ocr-progress.hidden{display:none}
+.ai-panel{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:16px;margin-bottom:12px}
+.ai-panel-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-weight:700;font-size:14px}
+.ai-panel-header span:last-of-type{margin-left:auto;font-size:12px;color:var(--sub)}
+.btn-xs{padding:4px 8px;font-size:11px;font-weight:600;background:var(--bdr);border:1px solid var(--bdr2);border-radius:4px;cursor:pointer;transition:all .15s}
+.btn-xs:hover{background:var(--card2);border-color:var(--bdr)}
+.ai-log{max-height:300px;overflow-y:auto;font-size:12px}
+.ai-log-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;margin-bottom:4px;background:var(--card2)}
+.ai-log-item.done{background:var(--grn-l)}
+.ai-log-item.error{background:var(--red-l)}
+.ai-log-item.active{background:var(--pri-l);border:1px solid var(--pri)}
+.ai-step{display:inline-flex;gap:2px}
+.ai-step span{padding:2px 6px;border-radius:4px;font-size:10px;background:var(--card);color:var(--mut)}
+.ai-step span.current{background:var(--pri);color:#fff;animation:pulse .8s infinite}
+.ai-step span.done{background:var(--grn);color:#fff}
+.ai-step span.fail{background:var(--red);color:#fff}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.ai-panel.hidden{display:none}
+@media(max-width:768px){.action-bar{gap:6px}.btn{padding:7px 12px;font-size:12px}.exh-row{flex-direction:column;align-items:stretch}.input-tabs{flex-wrap:wrap}.preview-item{width:100px}.preview-item img{width:84px;height:60px}}
+</style>
+</head>
+<body>
+<div class="app"><div class="inner">
+
+<!-- 헤더 -->
+<div class="hdr">
+  <div class="logo"><svg viewBox="0 0 24 24"><path d="M9 2H15L17 5H21C21.55 5 22 5.45 22 6V20C22 20.55 21.55 21 21 21H3C2.45 21 2 20.55 2 20V6C2 5.45 2.45 5 3 5H7L9 2ZM12 19C15.31 19 18 16.31 18 13C18 9.69 15.31 7 12 7C8.69 7 6 9.69 6 13C6 16.31 8.69 19 12 19Z"/></svg></div>
+  <h1>OCR Pro</h1>
+  <span class="ver">v6.2</span>
+  <button id="apiTestBtn" class="btn-xs" style="margin-left:auto" title="API 연결 상태 확인">🔌 연결 테스트</button>
+</div>
+
+<!-- file:// 프로토콜 경고 배너 -->
+<div id="fileProtocolWarn" style="display:none;background:#fef2f2;border:2px solid #ef4444;border-radius:12px;padding:14px 18px;margin-bottom:12px;font-size:13px;line-height:1.6">
+  <strong style="color:#ef4444">⚠️ file:// 프로토콜 감지 — API 호출이 차단됩니다</strong><br>
+  브라우저 보안 정책으로 인해 <code>file://</code>에서는 Google API 호출이 불가합니다.<br>
+  <strong>해결 방법:</strong> 같은 폴더의 <code>OCR-Pro-실행.command</code> 파일을 더블클릭하세요.<br>
+  <span style="color:#6b7280">(Python 로컬 서버가 자동 시작되며 http://localhost:8090 에서 앱이 열립니다)</span>
+</div>
+<script>
+if(location.protocol==="file:"){
+  document.getElementById("fileProtocolWarn").style.display="block";
+  console.warn("[OCR Pro] file:// 프로토콜 감지. API 호출이 CORS에 의해 차단될 수 있습니다. OCR-Pro-실행.command를 사용하세요.");
+}
+</script>
+
+<!-- 전시회명 -->
+<div class="exh-row">
+  <span>🏛</span><span class="exh-label">전시회명</span>
+  <input id="exhInput" class="exh-input" placeholder="전시회명 입력"/>
+  <span class="exh-tag">유입경로: 오프/행사 고정</span>
+</div>
+
+<!-- 입력 탭 -->
+<div class="input-tabs">
+  <button class="itab active" data-tab="img">📷 이미지</button>
+  <button class="itab" data-tab="doc">📄 문서</button>
+  <button class="itab" data-tab="url">🔗 URL</button>
+</div>
+
+<!-- 이미지 탭 -->
+<div id="panel-img" class="ipanel">
+  <div id="dropImg" class="drop">
+    <div class="drop-icon">📷</div>
+    <div class="drop-title">명함·문서 이미지를 드래그하거나 선택하세요</div>
+    <div class="drop-sub">JPG · PNG · HEIC · 다중 선택 · OCR 후 등록</div>
+    <button class="drop-btn" id="imgSelectBtn">파일 선택</button>
+  </div>
+  <input id="imgInput" type="file" accept="image/*,.heic,.heif" multiple style="display:none"/>
+  <div id="imgPreview" class="preview-list"></div>
+  <div id="imgPreviewActions" class="preview-actions hidden">
+    <button id="imgConfirmBtn" class="btn btn-pri">✓ OCR 추출 후 등록</button>
+    <button id="imgClearBtn" class="btn btn-out">전체 삭제</button>
+    <span style="font-size:12px;color:var(--sub)" id="imgPreviewCount">0개 선택됨</span>
+  </div>
+  <div id="ocrProgress" class="ocr-progress hidden">
+    <div style="margin-bottom:6px;font-weight:600">🔄 OCR 처리 중...</div>
+    <div id="ocrStatus" style="margin-bottom:8px">이미지 1/1 처리 중...</div>
+    <div class="pbar"><div class="pfill" id="ocrBar" style="width:0%"></div></div>
+  </div>
+</div>
+
+<!-- 문서 탭 -->
+<div id="panel-doc" class="ipanel hidden">
+  <div id="dropDoc" class="drop">
+    <div class="drop-icon">📄</div>
+    <div class="drop-title">문서 파일을 드래그하거나 선택하세요</div>
+    <div class="drop-sub">CSV · XLSX · PDF · TXT — 자동 파싱하여 즉시 등록</div>
+    <button class="drop-btn" id="docSelectBtn">파일 선택</button>
+  </div>
+  <input id="docInput" type="file" accept=".csv,.xlsx,.xls,.pdf,.txt" multiple style="display:none"/>
+</div>
+
+<!-- URL 탭 -->
+<div id="panel-url" class="ipanel hidden">
+  <label style="font-size:13px;font-weight:600;color:var(--txt);margin-bottom:6px;display:block">🔗 홈페이지 URL 입력 (여러 개는 줄바꿈으로)</label>
+  <textarea id="urlArea" class="url-area" placeholder="https://www.example.com&#10;https://www.company.co.kr&#10;https://www.business.com"></textarea>
+  <div class="url-hint">URL을 추가하면 테이블에 즉시 등록됩니다.</div>
+  <div class="url-actions">
+    <button id="urlAddBtn" class="btn btn-vio">+ URL 추가</button>
+  </div>
+</div>
+
+<!-- 액션 바 -->
+<div class="action-bar">
+  <button id="searchBtn" class="btn btn-pri" disabled>🤖 선택 후 AI 검색</button>
+  <button id="exportBtn" class="btn btn-grn" disabled>⬇ 세일즈맵 엑셀 <span class="cnt-badge" id="exportCnt">(0건)</span></button>
+  <button id="resetBtn" class="btn btn-red" disabled>초기화</button>
+  <div style="margin-left:auto;font-size:13px;color:var(--sub);font-weight:600" id="counter">0/0</div>
+</div>
+
+<!-- 진행 표시 -->
+<div id="pExtract" class="pbox hidden"><div class="ptop"><span class="plbl">📄 파일 처리 중...</span><span class="pnum" id="extNum">0/0</span></div><div class="pbar"><div class="pfill" id="extBar" style="width:0%"></div></div></div>
+
+<!-- 상태 카운트 -->
+<div id="statusRow" class="cnt-row hidden">
+  <span class="cnt-item"><span class="cnt-dot" style="background:var(--sub)"></span> 대기 <span id="cW">0</span></span>
+  <span class="cnt-item"><span class="cnt-dot" style="background:var(--pri)"></span> 진행 <span id="cP">0</span></span>
+  <span class="cnt-item"><span class="cnt-dot" style="background:var(--grn)"></span> 완료 <span id="cD">0</span></span>
+  <span class="cnt-item"><span class="cnt-dot" style="background:var(--red)"></span> 오류 <span id="cE">0</span></span>
+</div>
+
+<!-- AI 검색 진행 패널 -->
+<div id="aiSearchPanel" class="ai-panel hidden">
+  <div class="ai-panel-header">
+    <span>🤖 AI 기업정보 검색</span>
+    <span id="aiSearchCount">0/0</span>
+    <button id="aiSearchStop" class="btn-xs">중지</button>
+  </div>
+  <div id="aiSearchLog" class="ai-log">
+    <!-- Each record gets a progress line -->
+  </div>
+</div>
+
+<!-- 편집 안내 -->
+<div id="editHint" class="edit-hint hidden">💡 테이블 셀을 직접 클릭하여 내용을 수정할 수 있습니다 · 🔍 버튼으로 구글 검색</div>
+
+<!-- 테이블 -->
+<div id="tblWrap" class="tbl-wrap hidden">
+<table>
+<thead><tr>
+  <th style="width:32px"><input type="checkbox" class="ck" id="ckAll"/></th>
+  <th style="width:44px">출처</th>
+  <th style="min-width:130px">회사명</th>
+  <th style="min-width:70px">담당자</th>
+  <th style="min-width:100px">전화</th>
+  <th style="min-width:140px">이메일</th>
+  <th style="min-width:105px">사업자번호</th>
+  <th style="min-width:70px">대표자</th>
+  <th style="min-width:90px">업종</th>
+  <th style="min-width:70px">기업형태</th>
+  <th style="min-width:120px">웹주소</th>
+  <th style="min-width:160px">주소</th>
+  <th style="min-width:55px">신뢰도</th>
+  <th style="width:52px">상태</th>
+  <th style="width:50px"></th>
+</tr></thead>
+<tbody id="tBody"></tbody>
+</table>
+</div>
+
+</div></div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   전역 상태 — API 완전 제거, 순수 클라이언트
+   ═══════════════════════════════════════════════════ */
+const uid=()=>Math.random().toString(36).slice(2,10);
+const esc=s=>(s||"").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+let records=[], exportSeq=1;
+let pendingImages=[]; // 이미지 미리보기 대기 목록
+const $=s=>document.querySelector(s);
+
+/* ═══════════════════════════════════════════════════
+   토스트 알림
+   ═══════════════════════════════════════════════════ */
+function toast(msg,type=""){
+  const d=document.createElement("div");d.className=`toast ${type}`;d.textContent=msg;
+  document.body.appendChild(d);setTimeout(()=>d.remove(),2500);
+}
+
+/* ═══════════════════════════════════════════════════
+   구글 검색 (새 탭)
+   ═══════════════════════════════════════════════════ */
+function googleSearch(rec){
+  const q=[];
+  if(rec.회사명)q.push(rec.회사명);
+  if(rec.대표자)q.push(rec.대표자);
+  if(!q.length)q.push("기업정보");
+  q.push("사업자번호 대표 업종");
+  const url=`https://www.google.com/search?q=${encodeURIComponent(q.join(" "))}`;
+  window.open(url,"_blank");
+}
+
+function googleSearchAll(){
+  const tgts=records.filter(r=>r.checked);
+  if(!tgts.length){toast("검색할 항목을 선택해주세요.","error");return}
+  if(tgts.length>10){if(!confirm(`${tgts.length}개 탭이 열립니다. 계속하시겠습니까?`))return}
+  for(const r of tgts)googleSearch(r);
+  toast(`🔍 ${tgts.length}건 구글 검색 탭 열림`,"success");
+}
+
+/* ═══════════════════════════════════════════════════
+   안전한 JSON 파서 v2 (객체 1개용)
+   — URL 내 콜론 오인 버그 수정
+   — 단일따옴표, trailing comma, 잘린 JSON 복구
+   ═══════════════════════════════════════════════════ */
+function safeParseJSON(text) {
+  if (!text || typeof text !== "string") return null;
+  // 1. 마크다운 코드블록 + thinking 태그 제거
+  let clean = text
+    .replace(/```(?:json)?\s*/gi, "")
+    .replace(/```/g, "")
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .trim();
+
+  // 2. {…} 추출 (가장 바깥 중괄호)
+  const jsonMatch = clean.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+  let str = jsonMatch[0];
+
+  // 3. 그대로 파싱 시도
+  try { return JSON.parse(str); } catch {}
+
+  // 4. 단일 따옴표 → 이중 따옴표 (값 내부의 작은따옴표는 보존)
+  let fixed = str
+    .replace(/:\s*'([^']*)'/g, ': "$1"')          // 값: 'xxx' → "xxx"
+    .replace(/(?<=\{|,)\s*'(\w+)'\s*:/g, ' "$1":') // 키: 'xxx': → "xxx":
+    .replace(/,\s*}/g, '}')
+    .replace(/,\s*]/g, ']');
+  try { return JSON.parse(fixed); } catch {}
+
+  // 5. unquoted 키 보정 (URL 내 콜론 오인 방지: 줄 시작 또는 , 뒤의 키만)
+  let fixed2 = str
+    .replace(/'/g, '"')
+    .replace(/,\s*}/g, '}')
+    .replace(/,\s*]/g, ']');
+  // key를 따옴표로: {"기업명": ...} 형태에서 키에만 적용
+  fixed2 = fixed2.replace(/(?<=[\{,])\s*([가-힣a-zA-Z_]\w*)\s*:/g, ' "$1":');
+  try { return JSON.parse(fixed2); } catch {}
+
+  // 6. 잘린 JSON 복구: 마지막 완전한 키-값 쌍까지
+  const lastComplete = fixed2.lastIndexOf('",');
+  if (lastComplete > 0) {
+    const trimmed = fixed2.substring(0, lastComplete + 1) + "}";
+    try { return JSON.parse(trimmed); } catch {}
+  }
+
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════
+   안전한 JSON 배열 파서 (Gemini 배치 응답용)
+   — 배열 전체 파싱 → 실패 시 개별 객체 추출
+   ═══════════════════════════════════════════════════ */
+function safeParseJSONArray(text) {
+  if (!text || typeof text !== "string") return null;
+  // 1. 정리
+  let clean = text
+    .replace(/```(?:json)?\s*/gi, "")
+    .replace(/```/g, "")
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .trim();
+
+  // 2. [...] 추출
+  const arrMatch = clean.match(/\[[\s\S]*\]/);
+  if (!arrMatch) {
+    // 배열이 아니면 단일 객체 시도
+    const obj = safeParseJSON(clean);
+    return obj ? [obj] : null;
+  }
+  let str = arrMatch[0];
+
+  // 3. 그대로 파싱
+  try { return JSON.parse(str); } catch {}
+
+  // 4. 단일따옴표 + trailing comma 보정
+  let fixed = str
+    .replace(/'/g, '"')
+    .replace(/,\s*}/g, '}')
+    .replace(/,\s*]/g, ']');
+  // key 따옴표 보정 (URL 콜론 오인 방지)
+  fixed = fixed.replace(/(?<=[\{,])\s*([가-힣a-zA-Z_]\w*)\s*:/g, ' "$1":');
+  try { return JSON.parse(fixed); } catch {}
+
+  // 5. 잘린 배열 복구: 마지막 } 까지 잘라서 ] 붙이기
+  const lastObj = fixed.lastIndexOf('}');
+  if (lastObj > 0) {
+    try { return JSON.parse(fixed.substring(0, lastObj + 1) + ']'); } catch {}
+  }
+
+  // 6. 최후 수단: 개별 {...} 객체를 모두 추출
+  const objects = [];
+  const objRegex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+  let m;
+  while ((m = objRegex.exec(clean)) !== null) {
+    const parsed = safeParseJSON(m[0]);
+    if (parsed) objects.push(parsed);
+  }
+  return objects.length > 0 ? objects : null;
+}
+
+/* ═══════════════════════════════════════════════════
+   API 연결 테스트 + 타임아웃 유틸리티
+   ═══════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════
+   XHR 기반 HTTP 클라이언트 — file:// 프로토콜 완벽 호환
+   (fetch는 file://에서 CORS preflight 차단됨 → XHR 사용)
+   ═══════════════════════════════════════════════════ */
+function xhrPost(url, jsonBody, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.timeout = timeoutMs;
+    xhr.onload = () => {
+      let json = null;
+      try { json = JSON.parse(xhr.responseText); } catch(e) {}
+      resolve({
+        ok: xhr.status >= 200 && xhr.status < 300,
+        status: xhr.status,
+        json: () => Promise.resolve(json),
+        text: () => Promise.resolve(xhr.responseText),
+        _raw: json
+      });
+    };
+    xhr.onerror = () => reject(new Error("네트워크 오류 (XHR) — 인터넷 연결을 확인하세요"));
+    xhr.ontimeout = () => reject(new DOMException("요청 타임아웃 (" + (timeoutMs/1000) + "초)", "AbortError"));
+    xhr.send(typeof jsonBody === "string" ? jsonBody : JSON.stringify(jsonBody));
+  });
+}
+
+/* API 연결 상태 진단 — XHR 기반 */
+async function testApiConnection() {
+  const results = { network: false, visionApi: false, geminiApi: false, details: [] };
+
+  // 1) Vision API 연결 확인
+  try {
+    const url = `https://vision.googleapis.com/v1/images:annotate?key=${GCLOUD_API_KEY}`;
+    const r = await xhrPost(url, { requests: [] }, 10000);
+    results.network = true;
+    if (r.status === 403 || r.status === 401) {
+      results.details.push("⚠️ Vision API: 키 인증 실패 (HTTP " + r.status + ")");
+    } else {
+      results.visionApi = true;
+      results.details.push("✅ Vision API 연결: 정상 (HTTP " + r.status + ")");
+    }
+  } catch (e) {
+    results.details.push("❌ Vision API 연결 실패: " + e.message);
+  }
+
+  // 2) Gemini API 연결 확인
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GCLOUD_API_KEY}`;
+    const r = await xhrPost(url, { contents: [{ parts: [{ text: "ping" }] }], generationConfig: { maxOutputTokens: 10 } }, 15000);
+    results.network = true;
+    if (r.status === 403 || r.status === 401) {
+      results.details.push("⚠️ Gemini API: 키 인증 실패 (HTTP " + r.status + ")");
+    } else if (r.status === 429) {
+      results.geminiApi = true;
+      results.details.push("⚠️ Gemini API: 정상이나 할당량 초과 (잠시 후 재시도)");
+    } else {
+      results.geminiApi = true;
+      results.details.push("✅ Gemini API 연결: 정상 (HTTP " + r.status + ")");
+    }
+  } catch (e) {
+    results.details.push("❌ Gemini API 연결 실패: " + e.message);
+  }
+
+  if (!results.network) {
+    results.details.unshift("❌ 인터넷: 두 API 모두 연결 불가 — Wi-Fi/네트워크를 확인하세요");
+  } else {
+    results.details.unshift("✅ 인터넷 연결: 정상");
+  }
+  return results;
+}
+
+/* ═══════════════════════════════════════════════════
+   Gemini API 기업정보 검색 (모델 내부 지식 기반)
+   ═══════════════════════════════════════════════════ */
+/* ── Rate Limit 관리 ── */
+let _lastApiCall = 0;
+const API_MIN_INTERVAL = 500;  // 요청 간 최소 0.5초 간격 (2.5-flash thinking 비활성화로 429 위험 낮음)
+
+async function rateLimitWait() {
+  const now = Date.now();
+  const elapsed = now - _lastApiCall;
+  if (elapsed < API_MIN_INTERVAL) {
+    await sleep(API_MIN_INTERVAL - elapsed);
+  }
+  _lastApiCall = Date.now();
+}
+
+/* ── Gemini 원시 API 호출 (재시도 최대 5회, 지수 백오프) ── */
+async function callGeminiRaw(prompt, _retry = 0) {
+  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GCLOUD_API_KEY}`;
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 4096,
+      thinkingConfig: { thinkingBudget: 0 }   // ★ thinking 비활성화 → 응답속도 3~5배 향상
+    }
+  };
+
+  await rateLimitWait();
+  let res;
+  try {
+    res = await xhrPost(GEMINI_URL, body, 30000);
+  } catch (e) {
+    if (_retry < 2) {
+      console.log(`[Gemini] 네트워크 오류(${e.message}), ${_retry+1}/2 재시도...`);
+      await sleep(2000);
+      return callGeminiRaw(prompt, _retry + 1);
+    }
+    throw new Error("Gemini 네트워크 오류: " + e.message);
+  }
+
+  // 429/503 → 자동 대기 재시도 (최대 5회, 지수 백오프)
+  if (res.status === 429 || res.status === 503) {
+    if (_retry >= 5) throw new Error("API 할당량 초과 — 잠시 후 다시 시도해주세요");
+    const errData = res._raw || {};
+    const retryMatch = (errData?.error?.message || "").match(/retry in ([\d.]+)/i);
+    const waitSec = retryMatch
+      ? Math.min(Math.ceil(parseFloat(retryMatch[1])) + 2, 90)
+      : Math.min(10 * Math.pow(1.5, _retry), 60);  // 10s → 15s → 22s → 34s → 50s
+    console.log(`[Rate Limit] ${waitSec}초 대기 (${_retry + 1}/5)`);
+    await sleep(waitSec * 1000);
+    return callGeminiRaw(prompt, _retry + 1);
+  }
+
+  if (!res.ok) {
+    const errData = res._raw || {};
+    throw new Error(`Gemini API 오류: ${errData?.error?.message || res.status}`);
+  }
+
+  const data = res._raw;
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+
+  // thinking 파트 필터링
+  let text = "";
+  for (const p of parts) {
+    if (!p.thought && p.text) text += p.text + "\n";
+  }
+  // 모든 파트가 thought인 경우 마지막 텍스트 사용
+  if (!text.trim() && parts.length > 0) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      if (parts[i].text) { text = parts[i].text; break; }
+    }
+  }
+
+  if (!text.trim()) throw new Error("Gemini 응답이 비어있습니다");
+  return text;
+}
+
+/* ── Gemini 멀티모달 API — 이미지+텍스트 (HEIC 직접 지원) ── */
+async function callGeminiMultimodal(prompt, base64Data, mimeType, _retry = 0) {
+  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GCLOUD_API_KEY}`;
+  const reqBody = {
+    contents: [{ parts: [
+      { text: prompt },
+      { inline_data: { mime_type: mimeType, data: base64Data } }
+    ]}],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 4096,
+      thinkingConfig: { thinkingBudget: 0 }
+    }
+  };
+
+  /* ★ HEIC base64 크기 체크 (20MB 초과 시 경고) */
+  const payloadSizeMB = (base64Data.length * 3 / 4) / (1024 * 1024);
+  if (payloadSizeMB > 20) {
+    console.warn(`[Gemini Vision] 이미지 크기 ${payloadSizeMB.toFixed(1)}MB — 매우 큼, 전송 시간이 오래 걸릴 수 있습니다`);
+  }
+  const timeoutMs = payloadSizeMB > 5 ? 60000 : 30000;  // 큰 파일은 60초 타임아웃
+
+  await rateLimitWait();
+  let res;
+  try {
+    res = await xhrPost(GEMINI_URL, reqBody, timeoutMs);
+  } catch (e) {
+    if (_retry < 2) {
+      console.log(`[Gemini Vision] 네트워크 오류(${e.message}), ${_retry+1}/2 재시도...`);
+      await sleep(2000);
+      return callGeminiMultimodal(prompt, base64Data, mimeType, _retry + 1);
+    }
+    throw new Error("Gemini Vision 네트워크 오류: " + e.message);
+  }
+
+  if (res.status === 429 || res.status === 503) {
+    if (_retry >= 5) throw new Error("API 할당량 초과");
+    const waitSec = Math.min(10 * Math.pow(1.5, _retry), 60);
+    console.log(`[Gemini Vision Rate Limit] ${waitSec}초 대기 (${_retry + 1}/5)`);
+    await sleep(waitSec * 1000);
+    return callGeminiMultimodal(prompt, base64Data, mimeType, _retry + 1);
+  }
+
+  if (!res.ok) {
+    const errData = res._raw || {};
+    throw new Error(`Gemini Vision API 오류: ${errData?.error?.message || res.status}`);
+  }
+
+  const data = res._raw;
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  let text = "";
+  for (const p of parts) {
+    if (!p.thought && p.text) text += p.text + "\n";
+  }
+  if (!text.trim() && parts.length > 0) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      if (parts[i].text) { text = parts[i].text; break; }
+    }
+  }
+  if (!text.trim()) throw new Error("Gemini Vision 응답이 비어있습니다");
+  return text;
+}
+
+/* ★ HEIC 이미지 → Gemini Vision으로 직접 OCR+구조화 파싱 (변환 없이) */
+async function ocrHeicWithGemini(base64Data, mimeType){
+  const prompt=`이 이미지는 명함 또는 업체 정보입니다. 이미지에서 텍스트를 읽고 기업/담당자 정보를 JSON으로 추출하세요.
+
+[필드 정의]
+- "회사명": 법인/업체/기관의 공식 명칭. ㈜, (주), 주식회사 등이 포함됨.
+- "담당자": 사람 이름(한글 2~4자 또는 영문 인명). 라벨·부서·직함이 아님.
+- "담당직함": 직책/직위 (대표이사, 부장 등)
+- "전화": 유선 전화번호. "T.", "Tel" 라벨 제외.
+- "휴대폰": 010, 011, 016, 017, 018, 019으로 시작하는 모바일 번호. +82-10도 010으로 변환. "M.", "Mobile" 라벨 제외.
+- "이메일": @가 포함된 주소. "E-mail" 라벨 제외.
+- "사업자번호": xxx-xx-xxxxx 형식
+- "주소": 시/도로 시작하는 주소
+- "웹주소": www 또는 http URL
+- "업종": 사업 분야
+- "대표자": 대표이사/대표로 명시된 사람 이름
+
+[규칙]
+- "Mobile.", "Tel", "E-mail" 등 라벨은 담당자가 아닙니다.
+- 부서명(사업부, 영업본부)은 담당자가 아닙니다.
+- 인증마크(조달청 우수제품, 여성기업, ISO)는 회사명이 아닙니다.
+- 하나의 명함 = 1개 레코드. 같은 명함을 분리하지 마세요.
+- 정보 없는 필드는 빈 문자열("").
+
+[출력] — JSON 배열만, 설명 없이:
+[{"회사명":"","담당자":"","담당직함":"","전화":"","휴대폰":"","이메일":"","사업자번호":"","주소":"","웹주소":"","업종":"","대표자":""}]`;
+
+  const raw = await callGeminiMultimodal(prompt, base64Data, mimeType);
+  let jsonStr = raw;
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) jsonStr = fenced[1];
+  const arrMatch = jsonStr.match(/\[[\s\S]*\]/);
+  if (!arrMatch) throw new Error("JSON 배열 파싱 실패");
+  const arr = JSON.parse(arrMatch[0]);
+  if (!Array.isArray(arr) || arr.length === 0) throw new Error("빈 배열");
+  console.log("[Gemini Vision OCR] 성공:", arr.length, "건");
+  return arr;
+}
+
+/* ═══════════════════════════════════════════════════
+   bizno.net API — 상호명으로 사업자번호 검증
+   ═══════════════════════════════════════════════════ */
+const BIZNO_API_KEY = "21epIczrEgi3BTOoIcFWITKslTBoIwdN";
+const BIZNO_API_URL = "https://bizno.net/api/fapi";
+
+async function callBiznoAPI(companyName) {
+  if (!companyName) return null;
+  // 회사명 정리: ㈜, (주), 주식회사 등 제거 후 검색
+  const cleanName = companyName.replace(/[㈜(주)주식회사\s]/g, "").trim();
+  if (cleanName.length < 2) return null;
+
+  // gb=3: 상호명검색, type=json, status=Y: 국세청 실시간 상태조회
+  const url = `${BIZNO_API_URL}?key=${BIZNO_API_KEY}&gb=3&q=${encodeURIComponent(cleanName)}&type=json&status=Y`;
+
+  try {
+    const text = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", url, true);
+      xhr.timeout = 10000;
+      xhr.onload = () => { if(xhr.status>=200&&xhr.status<300) resolve(xhr.responseText); else { console.warn(`[Bizno] HTTP ${xhr.status} for "${cleanName}"`); reject(new Error("HTTP "+xhr.status)); } };
+      xhr.onerror = () => reject(new Error("네트워크 오류"));
+      xhr.ontimeout = () => reject(new Error("타임아웃"));
+      xhr.send();
+    });
+    console.log(`[Bizno] Raw response for "${cleanName}":`, text.substring(0, 500));
+
+    let data;
+    try { data = JSON.parse(text); } catch (pe) {
+      console.warn(`[Bizno] JSON 파싱 실패 "${cleanName}":`, pe.message);
+      return null;
+    }
+
+    // 에러 체크: resultCode 0=정상, -1=미등록, -2=파라메터오류, -3=조회수초과, -9=기타
+    if (data.resultCode !== 0 && data.resultCode !== "0") {
+      console.warn(`[Bizno] API 오류: ${data.resultCode} - ${data.resultMsg || ""}`);
+      return null;
+    }
+
+    const items = data.items || [];
+    const totalCount = data.totalCount || items.length;
+    console.log(`[Bizno] "${cleanName}" → ${totalCount}건, items:`, items.length);
+
+    if (items.length === 0) return null;
+
+    // 가장 유사한 결과 선택: 상호명이 가장 일치하는 것
+    let best = items[0];
+    for (const item of items) {
+      const itemName = (item.company || "").replace(/[㈜(주)주식회사\s]/g, "");
+      if (itemName === cleanName) { best = item; break; }
+      if (itemName.includes(cleanName) || cleanName.includes(itemName)) { best = item; }
+    }
+
+    // fapi JSON 응답 필드 (API 문서 기준):
+    // bno: 사업자등록번호, cno: 법인등록번호, company: 회사명
+    // bsttcd: 사업자상태코드(01:계속,02:휴업,03:폐업), bstt: 사업자상태명칭
+    // TaxTypeCd: 과세유형코드, taxtype: 과세유형명칭, EndDt: 폐업일
+    const bizStatus = best.bstt || (best.bsttcd === "01" ? "계속사업자" : best.bsttcd === "02" ? "휴업자" : best.bsttcd === "03" ? "폐업자" : "");
+
+    console.log(`[Bizno] 매칭결과: ${best.company} / ${best.bno} / 상태: ${bizStatus} / 과세: ${best.taxtype || ""}`);
+
+    return {
+      사업자번호: formatBizNo(best.bno || ""),
+      법인번호: best.cno || "",
+      상호명: best.company || "",
+      사업상태: bizStatus,
+      과세유형: best.taxtype || "",
+      폐업일: best.EndDt || "",
+      _matched: true
+    };
+  } catch (e) {
+    console.warn(`[Bizno] 오류 "${cleanName}":`, e.message);
+    return null;
+  }
+}
+
+/* 사업자번호 포맷: 1234567890 → 123-45-67890 */
+function formatBizNo(bno) {
+  if (!bno) return "";
+  const digits = bno.replace(/\D/g, "");
+  if (digits.length === 10) return `${digits.slice(0,3)}-${digits.slice(3,5)}-${digits.slice(5)}`;
+  return bno;
+}
+
+/* ── 배치 프롬프트 생성 (bizno 결과 포함 가능) ── */
+function makeBatchPrompt(companies) {
+  const companyList = companies.map((c, i) => {
+    let line = `${i + 1}. ${c.name}`;
+    if (c.rep) line += ` (대표자 참고: ${c.rep})`;
+    if (c.bizno) line += ` [사업자번호: ${c.bizno}]`;
+    if (c.biznoStatus) line += ` [상태: ${c.biznoStatus}]`;
+    return line;
+  }).join("\n");
+
+  return `당신은 한국 기업 정보 전문가입니다. 아래 기업들의 정보를 알려주세요.
+일부 기업은 사업자번호가 미리 확인되어 있습니다. 해당 번호를 그대로 사용하세요.
+모르는 정보는 빈 문자열("")로 남기세요.
+
+기업 목록:
+${companyList}
+
+위 기업 ${companies.length}개의 정보를 JSON 배열로만 응답하세요. 다른 텍스트 없이 JSON만 출력하세요.
+형식: [{"기업명":"정확한 회사명","사업자번호":"000-00-00000","대표자":"이름","주소":"시/도 시/군/구 상세주소","업종":"주요 업종","기업형태":"중소기업/중견기업/대기업","웹주소":"https://...","매출":"0억","영업이익":"0억"}]
+순서를 반드시 유지하세요.`;
+}
+
+/* ── 단일 기업 프롬프트 생성 (bizno 결과 포함 가능) ── */
+function makeSinglePrompt(company) {
+  let extra = "";
+  if (company.bizno) extra += `\n참고: 사업자번호 ${company.bizno} (확인됨, 그대로 사용하세요)`;
+  if (company.biznoStatus) extra += `, 사업상태: ${company.biznoStatus}`;
+  return `당신은 한국 기업 정보 전문가입니다.
+"${company.name}"${company.rep ? ` (참고인: ${company.rep})` : ''} 기업의 정보를 알려주세요.${extra}
+모르는 정보는 빈 문자열("")로 남기세요.
+
+JSON 객체 하나만 응답하세요. 다른 텍스트 없이 JSON만:
+{"기업명":"정확한 회사명","사업자번호":"000-00-00000","대표자":"이름","주소":"시/도 시/군/구 상세주소","업종":"주요 업종","기업형태":"중소기업/중견기업/대기업","웹주소":"https://...","매출":"0억","영업이익":"0억"}`;
+}
+
+/* ── 배치 호출 (실패 시 개별 폴백) ── */
+async function callGeminiBatch(companies) {
+  // 1건이면 단일 호출
+  if (companies.length === 1) {
+    const text = await callGeminiRaw(makeSinglePrompt(companies[0]));
+    const obj = safeParseJSON(text);
+    if (obj) return [obj];
+    throw new Error("JSON 파싱 실패");
+  }
+
+  // 배치 호출 시도
+  try {
+    const text = await callGeminiRaw(makeBatchPrompt(companies));
+    const arr = safeParseJSONArray(text);
+    if (arr && arr.length > 0) return arr;
+    throw new Error("배열 파싱 실패");
+  } catch (batchErr) {
+    console.warn("[배치 실패, 개별 재시도]", batchErr.message);
+
+    // 개별 폴백: 각 회사를 1건씩 호출
+    const results = [];
+    for (const comp of companies) {
+      try {
+        const text = await callGeminiRaw(makeSinglePrompt(comp));
+        const obj = safeParseJSON(text);
+        results.push(obj || { 기업명: comp.name, _error: "파싱실패" });
+      } catch (e) {
+        console.warn(`[개별 실패] ${comp.name}:`, e.message);
+        results.push({ 기업명: comp.name, _error: e.message });
+      }
+    }
+    return results;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   AI 검색 전체 워크플로우 (배치 처리 + 개별 폴백)
+   ═══════════════════════════════════════════════════ */
+let aiSearchAborted = false;
+
+async function aiSearchAll() {
+  const targets = records.filter(r => r.checked);
+  if (!targets.length) { toast("검색할 항목을 선택해주세요.", "error"); return; }
+
+  aiSearchAborted = false;
+  // 모든 대상을 "대기" 상태로 초기화
+  for (const rec of targets) rec.status = "대기";
+  render();
+
+  const panel = $("#aiSearchPanel");
+  panel.classList.remove("hidden");
+  const log = $("#aiSearchLog");
+  log.innerHTML = "";
+
+  // 로그 아이템 생성
+  for (const rec of targets) {
+    const div = document.createElement("div");
+    div.className = "ai-log-item";
+    div.id = `ai-${rec.id}`;
+    div.innerHTML = `
+      <span style="font-weight:600;min-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(rec.회사명 || '미확인')}</span>
+      <div class="ai-step">
+        <span data-step="input">입력</span>
+        <span data-step="search1">사업자조회</span>
+        <span data-step="extract">적용</span>
+        <span data-step="done">완료</span>
+      </div>
+      <span class="ai-result" style="margin-left:auto;font-size:11px;color:var(--sub)">⏳ 대기</span>
+    `;
+    log.appendChild(div);
+  }
+
+  let completed = 0;
+  $("#aiSearchCount").textContent = `0/${targets.length}`;
+
+  // ── 배치 처리: 10개씩 — bizno.net 병렬 조회 Only ──
+  const BATCH_SIZE = 10;
+  for (let batchStart = 0; batchStart < targets.length; batchStart += BATCH_SIZE) {
+    if (aiSearchAborted) break;
+    const batch = targets.slice(batchStart, batchStart + BATCH_SIZE);
+
+    // 배치 내 항목만 "진행"으로 전환 (나머지는 "대기" 유지)
+    const batchItems = batch.map(rec => {
+      const logItem = $(`#ai-${rec.id}`);
+      const resultSpan = logItem.querySelector(".ai-result");
+      logItem.classList.add("active");
+      setAiStep(logItem, "input");
+      resultSpan.textContent = `🔍 준비 중...`;
+      rec.status = "진행";
+      return { rec, logItem, resultSpan };
+    });
+    render();
+
+    // ──────── bizno.net 사업자 조회 (전건 병렬) ────────
+    for (const item of batchItems) {
+      setAiStep(item.logItem, "search1");
+      item.resultSpan.textContent = `📋 bizno.net 조회 중... (${batch.length}건 병렬)`;
+    }
+
+    const biznoPromises = batchItems.map(item =>
+      callBiznoAPI(item.rec.회사명).catch(e => {
+        console.warn("[Bizno 조회 실패]", item.rec.회사명, e.message);
+        return null;
+      })
+    );
+    const biznoResults = await Promise.all(biznoPromises);
+
+    // ──────── 결과 적용 ────────
+    for (let i = 0; i < batchItems.length; i++) {
+      const { rec, logItem, resultSpan } = batchItems[i];
+      const br = biznoResults[i];
+      if (aiSearchAborted) break;
+
+      try {
+        setAiStep(logItem, "extract");
+
+        if (br && br._matched) {
+          // bizno 결과 적용
+          if (br.사업자번호 && !rec.사업자번호) rec.사업자번호 = br.사업자번호;
+          if (br.상호명) rec.회사명_bizno = br.상호명;  // 공식 상호명 보관
+          rec._biznoVerified = true;
+          rec._biznoStatus = br.사업상태;
+          rec.status = "완료";
+
+          setAiStep(logItem, "done");
+          logItem.classList.remove("active"); logItem.classList.add("done");
+          const statusIcon = br.사업상태 === "계속사업자" ? "🟢" : br.사업상태 === "휴업자" ? "🟡" : br.사업상태 === "폐업자" ? "🔴" : "⚪";
+          resultSpan.textContent = `✅ ${br.사업자번호} ${statusIcon}${br.사업상태 || "상태미확인"} [검증완료]`;
+          resultSpan.style.color = "var(--grn)";
+        } else {
+          // bizno 미확인
+          rec._biznoVerified = false;
+          rec.status = "완료";
+
+          setAiStep(logItem, "done");
+          logItem.classList.remove("active"); logItem.classList.add("done");
+          resultSpan.textContent = `⚠️ bizno 미확인 — OCR 데이터 유지`;
+          resultSpan.style.color = "var(--sub)";
+        }
+        completed++;
+      } catch(e) {
+        console.error("[조회 오류]", rec.회사명, e);
+        logItem.classList.remove("active"); logItem.classList.add("error");
+        resultSpan.textContent = `❌ ${e.message}`;
+        resultSpan.style.color = "var(--red)";
+        setAiStepFail(logItem); rec.status = "오류"; completed++;
+      }
+      render();
+      $("#aiSearchCount").textContent = `${completed}/${targets.length}`;
+    } // end for each item
+  } // end for each batch
+
+  toast(`🤖 AI 검색 완료: ${completed}/${targets.length}건`, completed === targets.length ? "success" : "error");
+}
+
+function setAiStep(logItem, stepName) {
+  const steps = logItem.querySelectorAll(".ai-step span");
+  let reached = false;
+  steps.forEach(s => {
+    if (s.dataset.step === stepName) {
+      s.className = "current";
+      reached = true;
+    } else if (!reached) {
+      s.className = "done";
+    } else {
+      s.className = "";
+    }
+  });
+}
+
+function setAiStepFail(logItem) {
+  const steps = logItem.querySelectorAll(".ai-step span");
+  steps.forEach(s => {
+    if (s.className === "current") s.className = "fail";
+  });
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ═══════════════════════════════════════════════════
+   레코드 → 테이블 렌더 (셀 편집 가능)
+   ═══════════════════════════════════════════════════ */
+const EDIT_FIELDS=["회사명","담당자","전화","이메일","사업자번호","대표자","업종","기업형태","웹주소","주소"];
+
+function render(){
+  const ck=records.filter(r=>r.checked).length, tot=records.length;
+  const done=records.filter(r=>r.status==="완료").length, wait=records.filter(r=>r.status==="대기").length;
+  const prog=records.filter(r=>r.status==="진행").length;
+  const err=records.filter(r=>r.status==="오류").length;
+
+  $("#counter").textContent=`${ck}/${tot}`;
+  $("#exportCnt").textContent=`(${tot}건)`;
+  $("#searchBtn").disabled=!ck; $("#exportBtn").disabled=!tot; $("#resetBtn").disabled=!tot;
+  $("#searchBtn").innerHTML=ck>0?`🤖 선택 ${ck}건 AI 검색`:"🤖 선택 후 AI 검색";
+
+  if(tot>0){
+    $("#statusRow").classList.remove("hidden");
+    $("#editHint").classList.remove("hidden");
+    $("#cW").textContent=wait;$("#cP").textContent=prog;$("#cD").textContent=done;$("#cE").textContent=err;
+  }else{
+    $("#statusRow").classList.add("hidden");
+    $("#editHint").classList.add("hidden");
+  }
+
+  $("#tblWrap").classList.toggle("hidden",tot===0);
+
+  $("#tBody").innerHTML=records.map(r=>{
+    const srcCls=r.source==="QR"?"src-qr":r.source==="이미지"?"src-img":r.source==="문서"?"src-doc":"src-url";
+    const srcLbl=r.source==="QR"?"📱":r.source==="이미지"?"📷":r.source==="문서"?"📄":"🔗";
+    const stCls=r.status==="대기"?"st-wait":r.status==="진행"?"st-progress":r.status==="완료"?"st-done":"st-error";
+    const stIcon=r.status==="대기"?"⏳":r.status==="진행"?"🔄":r.status==="완료"?"✓":"✕";
+    let relH='<span style="color:var(--mut)">—</span>';
+    if(r.신뢰도){const rc=r.신뢰도==="높음"?"rel-high":r.신뢰도==="보통"?"rel-mid":"rel-low";relH=`<span class="rel ${rc}">${esc(r.신뢰도)}</span>`}
+
+    return `<tr data-id="${r.id}"${r.status==="진행"?' style="background:var(--pri-l)"':''}>
+      <td><input type="checkbox" class="ck rck" ${r.checked?"checked":""} data-id="${r.id}"/></td>
+      <td><span class="src-badge ${srcCls}">${srcLbl} ${esc(r.source)}</span></td>
+      <td contenteditable="true" class="editable" data-field="회사명" data-id="${r.id}">${esc(r.회사명)}</td>
+      <td contenteditable="true" class="editable" data-field="담당자" data-id="${r.id}">${esc(r.담당자)}</td>
+      <td contenteditable="true" class="editable" data-field="전화" data-id="${r.id}">${esc(r.전화)}</td>
+      <td contenteditable="true" class="editable" data-field="이메일" data-id="${r.id}">${esc(r.이메일)}</td>
+      <td contenteditable="true" class="editable" data-field="사업자번호" data-id="${r.id}">${esc(r.사업자번호)}</td>
+      <td contenteditable="true" class="editable" data-field="대표자" data-id="${r.id}">${esc(r.대표자)}</td>
+      <td contenteditable="true" class="editable" data-field="업종" data-id="${r.id}">${esc(r.업종)}</td>
+      <td contenteditable="true" class="editable" data-field="기업형태" data-id="${r.id}">${esc(r.기업형태)}</td>
+      <td contenteditable="true" class="editable" data-field="웹주소" data-id="${r.id}">${esc(r.웹주소)}</td>
+      <td contenteditable="true" class="editable" data-field="주소" data-id="${r.id}">${esc(r.주소)}</td>
+      <td>${relH}</td>
+      <td><span class="st ${stCls}">${stIcon} ${esc(r.status)}</span></td>
+      <td>
+        <button class="gsearch-btn" data-id="${r.id}" title="구글 검색">🔍</button>
+        <button class="rm-btn" data-id="${r.id}" title="삭제">✕</button>
+      </td>
+    </tr>`}).join("");
+}
+
+function emptyRec(src){return{id:uid(),checked:true,status:"대기",thumb:"",source:src,회사명:"",담당자:"",담당직함:"",전화:"",휴대폰:"",이메일:"",사업자번호:"",대표자:"",업종:"",기업형태:"",웹주소:"",주소:"",신뢰도:"",매출:"",영업이익:"",flowScore:""}}
+
+/* ═══════════════════════════════════════════════════
+   셀 편집 → 레코드 반영
+   ═══════════════════════════════════════════════════ */
+document.addEventListener("focusout",e=>{
+  if(!e.target.classList||!e.target.classList.contains("editable"))return;
+  const id=e.target.dataset.id, field=e.target.dataset.field;
+  const rec=records.find(r=>r.id===id);
+  if(rec){
+    rec[field]=e.target.textContent.trim();
+    /* 내용 입력 시 상태를 완료로 변경 */
+    const filled=EDIT_FIELDS.some(f=>rec[f]);
+    if(filled&&rec.status==="대기")rec.status="완료";
+  }
+});
+
+/* ═══════════════════════════════════════════════════
+   Google Vision API — 이미지 OCR (DOCUMENT_TEXT_DETECTION)
+   ═══════════════════════════════════════════════════ */
+const GCLOUD_API_KEY="AIzaSyDrErRLi-UQ6z3OJTblB-Z7RNQXMNHyjng";
+
+/* dataUrl → base64 문자열 (data:image/...;base64, 제거) */
+function dataUrlToBase64(dataUrl){
+  return dataUrl.split(",")[1]||"";
+}
+
+/* Google Vision API 호출: DOCUMENT_TEXT_DETECTION (재시도 포함) */
+async function callGoogleVision(base64, _retry = 0){
+  const url=`https://vision.googleapis.com/v1/images:annotate?key=${GCLOUD_API_KEY}`;
+  const body={
+    requests:[{
+      image:{content:base64},
+      features:[{type:"DOCUMENT_TEXT_DETECTION",maxResults:1}],
+      imageContext:{languageHints:["ko","en"]}
+    }]
+  };
+  let res;
+  try{
+    res=await xhrPost(url, body, 30000);
+  }catch(e){
+    // 네트워크 오류 시 최대 2회 재시도
+    if (_retry < 2) {
+      console.log(`[Vision] 네트워크 오류(${e.message}), ${_retry+1}/2 재시도...`);
+      await sleep(1500);
+      return callGoogleVision(base64, _retry + 1);
+    }
+    throw new Error("Vision API 네트워크 오류: "+e.message);
+  }
+  if(!res.ok){
+    let detail="";
+    try{
+      const errData=res._raw||{};
+      if(errData.error){
+        detail=errData.error.message||"";
+        if(errData.error.status) detail+=" ["+errData.error.status+"]";
+        /* 흔한 403 원인 안내 */
+        if(res.status===403){
+          if(detail.toLowerCase().includes("disabled")||detail.toLowerCase().includes("not been used")){
+            detail+="\n→ Google Cloud Console에서 'Cloud Vision API'를 사용 설정해주세요.\n  https://console.cloud.google.com/apis/library/vision.googleapis.com";
+          }else if(detail.toLowerCase().includes("denied")||detail.toLowerCase().includes("restriction")){
+            detail+="\n→ API 키에 HTTP 리퍼러/IP 제한이 있을 수 있습니다. Cloud Console > 사용자 인증 정보에서 확인하세요.";
+          }else{
+            detail+="\n→ 403 원인: (1) Vision API 미사용 설정 (2) API 키 제한 (3) 결제 미설정\n  https://console.cloud.google.com/apis/library/vision.googleapis.com";
+          }
+        }
+      }
+    }catch(_){}
+    throw new Error(`Vision API 오류 (${res.status}): ${detail||"응답 없음"}`);
+  }
+  const data=res._raw||{};
+  if(data.error) throw new Error(data.error.message||"Vision API 오류");
+  return data.responses?.[0]||{};
+}
+
+/* ═══════════════════════════════════════════════════
+   Vision fullText 기반 테이블 파싱 v3
+   — fullTextAnnotation.text를 줄 단위로 분석
+   — 업종 우선 분류, 레코드 경계=회사명 중복 기반
+   ═══════════════════════════════════════════════════ */
+
+/* 업종 키워드 세트 — classifyToken보다 먼저 검사 */
+const INDUSTRY_SET=new Set(["제조","도소매","건설","서비스","IT","운송","물류","무역","교육","의료","금융","보험","부동산","음식","숙박","출판","방송","통신","전기","전자","기계","화학","섬유","식품","유통","광고","컨설팅","도매","소매","정보통신","에너지","환경","농업","수산","임업","광업","예술","스포츠","부동산업","인쇄","포장","자동차","반도체","바이오","제약","의약","소프트웨어","하드웨어","디자인"]);
+
+/* 직함 패턴 */
+const TITLE_PATTERN=/^(?:대표이사|대표|부사장|전무이사|전무|상무이사|상무|이사|부장|차장|과장|대리|사원|팀장|실장|본부장|센터장|원장장?|수석|선임|교장|교감|교수|학과장|학장|창업기술원장|총장|사무국장|사무총장|국장|처장|소장|연구원|위원장?|회장|부회장|총무|간사|기술이사|감사|고문|자문|디자인이사)$/;
+
+/* 주소 시작 패턴 */
+const ADDR_PREFIX=/^(?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)/;
+
+/* 헤더 키워드 (테이블 헤더 행 감지용) — 오타 포함 */
+const HEADER_KEYWORDS=["회사명","회사","업체명","업체","상호","기업명","이름","담당자","성명","대표자","직함","직합","직위","직책","전화","전화번호","휴대폰","핸드폰","휴대전화","모바일","이메일","메일","email","사업자번호","주소","소재지","회사주소","자택주소","웹주소","홈페이지","업종","업태","사진","연수원","ceoid","비고","id","참가자","참가","등록"];
+
+function isHeaderLine(line){
+  const lower=line.replace(/\s/g,"").toLowerCase();
+  /* 단일 헤더 키워드만으로 된 짧은 줄도 헤더로 간주 */
+  if(lower.length<=6){
+    for(const kw of HEADER_KEYWORDS){
+      if(lower===kw.toLowerCase()) return true;
+    }
+  }
+  let matchCount=0;
+  for(const kw of HEADER_KEYWORDS){
+    if(lower.includes(kw.toLowerCase())) matchCount++;
+  }
+  return matchCount>=2;
+}
+
+/* 개별 토큰 분류 — 순서 중요: 업종 > 직함 > 이름 */
+function classifyToken(t){
+  if(!t||!t.trim()) return null;
+  t=t.trim();
+
+  /* 1. 사업자번호 */
+  if(/\d{3}-\d{2}-\d{5}/.test(t)) return {field:"사업자번호",value:t.match(/\d{3}-\d{2}-\d{5}/)[0]};
+
+  /* 2. 이메일 (@@오타는 전처리에서 이미 보정됨) */
+  if(/[\w.-]+@[\w.-]+\.\w{2,}/i.test(t)){
+    return {field:"이메일",value:t.match(/[\w.-]+@[\w.-]+\.\w{2,}/i)[0]};
+  }
+
+  /* 3. 휴대폰 (+82-10 → 010 변환 포함) */
+  if(/\+?82[-.\s]?10[-.\s]?\d{3,4}[-.\s]?\d{4}/.test(t)){
+    const m=t.match(/\+?82[-.\s]?(10[-.\s]?\d{3,4}[-.\s]?\d{4})/);
+    return {field:"휴대폰",value:"0"+m[1].replace(/[-.\s]/g,"").replace(/^(\d{2,3})(\d{3,4})(\d{4})$/,"$1-$2-$3")};
+  }
+  if(/01[016789][-.\s]?\d{3,4}[-.\s]?\d{4}/.test(t)) return {field:"휴대폰",value:t.match(/01[016789][-.\s]?\d{3,4}[-.\s]?\d{4}/)[0]};
+
+  /* 4. 일반전화 (1588 등 대표번호 포함) */
+  if(/(?:1588|1577|1544|1566|1600|1644|1661|1670|1688|1899)[-.\s]?\d{4}/.test(t)) return {field:"전화",value:t.match(/(?:1588|1577|1544|1566|1600|1644|1661|1670|1688|1899)[-.\s]?\d{4}/)[0]};
+  if(/0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}/.test(t)) return {field:"전화",value:t.match(/0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}/)[0]};
+
+  /* 5. 웹주소 */
+  if(/(?:https?:\/\/|www\.)\S+/i.test(t)) return {field:"웹주소",value:t.match(/(?:https?:\/\/|www\.)\S+/i)[0]};
+
+  /* 6. 주소 */
+  if(ADDR_PREFIX.test(t)) return {field:"주소",value:t};
+
+  /* 7. 회사명 (법인 표기 + 기업명 접미사) */
+  if(/(?:㈜|주식회사|\(주\)|㈜)/.test(t)) return {field:"회사명",value:t};
+  if(/(?:시스템|테크|솔루션|소프트|컨설팅|엔지니어링|커뮤니케이션|인터내셔널|코리아|그룹|홀딩스|파트너스|네트웍스|네트워크|이엔지|건설산업|종합건설|산업|전자|중공업|에너지|바이오|메디컬|푸드|로지스틱스|캐피탈|파이낸스|인베스트|글로벌|디자인|미디어|플러스|랩|스튜디오|컴퍼니|엔터프라이즈)$/.test(t)&&t.length>=4) return {field:"회사명",value:t};
+
+  /* 8. ★ 업종 — 이름/직함보다 먼저 검사 */
+  if(INDUSTRY_SET.has(t)) return {field:"업종",value:t};
+
+  /* 9. ceoXXXXX ID → 레코드 종료 마커 */
+  if(/^ceo\d+$/i.test(t)) return {field:"_id",value:t};
+
+  /* 10. 직함 */
+  if(TITLE_PATTERN.test(t)) return {field:"담당직함",value:t};
+
+  /* 11. 2~4자 한글 이름 (업종/직함 아닌 것) */
+  if(/^[가-힣]{2,4}$/.test(t)) return {field:"담당자",value:t};
+
+  /* 11-b. 영문 이름 패턴 (First Last, 단일 영문 이름 등) */
+  if(/^[A-Z][a-z]{1,15}$/.test(t)) return {field:"담당자",value:t};
+  if(/^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(t)) return {field:"담당자",value:t};
+  if(/^[A-Z][a-z]+[-][A-Z][a-z]+$/.test(t)) return {field:"담당자",value:t};
+
+  /* 12. 숫자+하이픈 짧은 것 → 스킵 */
+  if(/^\d[-\d]*$/.test(t)&&t.length<8) return null;
+
+  /* 13. 한글/영문 2자 이상 → 미분류 텍스트 */
+  if(t.length>=2&&/[가-힣a-zA-Z]/.test(t)) return {field:"_text",value:t};
+
+  return null;
+}
+
+/* fullText에서 레코드 추출 — 핵심 로직 v3 */
+function parseFullTextToRecords(fullText){
+  if(!fullText||fullText.trim().length<10) return null;
+
+  const lines=fullText.split("\n").map(l=>l.trim()).filter(l=>l.length>0);
+  if(lines.length<3) return null;
+
+  console.log("[Vision v3] 전체 텍스트 줄 수:",lines.length);
+  console.log("[Vision v3] 텍스트:\n",lines.join("\n"));
+
+  /* 1단계: 헤더 행 제거 + 줄에서 토큰 추출 */
+  const tokens=[];
+  for(const line of lines){
+    if(isHeaderLine(line)){
+      console.log("[Vision v3] 헤더 제거:",line);
+      continue;
+    }
+
+    /* ★ 전처리: 줄 안에 이메일/전화가 다른 텍스트에 붙어 있으면 분리 */
+    let processLine=line;
+    /* OCR 공백 보정: "richard @domain.com" → "richard@domain.com" (@ 앞 공백 제거) */
+    processLine=processLine.replace(/(\w)\s+@(\w)/g,"$1@$2");
+    /* OCR 공백 보정: "user@ domain.com" → "user@domain.com" (@ 뒤 공백 제거) */
+    processLine=processLine.replace(/@\s+([\w.-]+\.\w{2,})/g,"@$1");
+    /* @@ 오타 보정 */
+    processLine=processLine.replace(/@@+/g,"@");
+    /* 이메일이 텍스트에 붙은 경우: "abc김성찬sungchan@email.com경기도" → 분리 */
+    const embeddedEmail=processLine.match(/[\w.-]+@[\w.-]+\.\w{2,}/gi);
+    if(embeddedEmail){
+      for(const em of embeddedEmail){
+        processLine=processLine.replace(em," "+em+" ");
+      }
+    }
+    /* 전화번호가 텍스트에 붙은 경우 */
+    const embeddedPhone=processLine.match(/01[016789][-.\s]?\d{3,4}[-.\s]?\d{4}/g);
+    if(embeddedPhone){
+      for(const ph of embeddedPhone){
+        processLine=processLine.replace(ph," "+ph+" ");
+      }
+    }
+    /* 주소 시작 키워드 앞에 공백 삽입 (붙어있는 경우 분리) */
+    processLine=processLine.replace(/((?:서울특별시|부산광역시|대구광역시|인천광역시|광주광역시|대전광역시|울산광역시|세종특별자치시|경기도|강원도|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도|제주특별자치도|서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주))/g," $1");
+
+    /* 탭/다중공백으로 1차 분리 (전체 줄 매칭은 하지 않음 — 복합 데이터 손실 방지) */
+    const parts=processLine.split(/\t+|\s{2,}/);
+    for(const part of parts){
+      const p=part.trim();
+      if(!p) continue;
+      const tok=classifyToken(p);
+      if(tok){
+        tokens.push(tok);
+      }else{
+        /* 단일 공백으로 2차 분리 */
+        const subParts=p.split(/\s+/);
+        for(const sp of subParts){
+          const st=sp.trim();
+          if(!st) continue;
+          const stok=classifyToken(st);
+          if(stok) tokens.push(stok);
+        }
+      }
+    }
+  }
+
+  console.log("[Vision v3] 토큰:",tokens.map(t=>`${t.field}=${t.value}`).join(" | "));
+
+  /* 2단계: 레코드 경계 감지 + 필드 배정 */
+  const records=[];
+  let cur=makeEmptyClassified();
+
+  for(const tok of tokens){
+    /* _id는 레코드 종료 마커 */
+    if(tok.field==="_id"){
+      if(hasMinData(cur)) records.push({...cur});
+      cur=makeEmptyClassified();
+      continue;
+    }
+
+    let f=tok.field;
+    /* _text → 컨텍스트에 따라 필드 추측 */
+    if(f==="_text") f=guessTextField(tok.value,cur);
+
+    /* _skip은 무시 */
+    if(f==="_skip") continue;
+
+    /* ★ 새 레코드 시작 판단: 회사명이 이미 있는데 새 회사명이 오면 */
+    /* 단, 최소 2개 필드가 채워져 있어야 분리 (너무 빈 레코드 방지) */
+    if(f==="회사명"&&cur.회사명&&cur.회사명!==""){
+      const filledFields=["담당자","전화","휴대폰","이메일","사업자번호"].filter(k=>cur[k]).length;
+      if(filledFields>=1&&hasMinData(cur)){
+        records.push({...cur});
+        cur=makeEmptyClassified();
+      }
+    }
+
+    /* 필드 배정 */
+    if(f==="주소"){
+      /* 주소가 이미 있으면: 동일 주소면 스킵, 다르면 _주소2 */
+      if(cur.주소){
+        if(!cur.주소.includes(tok.value)&&!tok.value.includes(cur.주소)){
+          cur._주소2=tok.value;
+        }
+      }else{
+        cur.주소=tok.value;
+      }
+    }else if(f==="담당자"){
+      if(!cur.담당자) cur.담당자=tok.value;
+    }else if(f==="담당직함"){
+      if(!cur.담당직함) cur.담당직함=tok.value;
+    }else if(f==="업종"){
+      if(!cur.업종) cur.업종=tok.value;
+    }else if(f==="이메일"){
+      /* 이메일이 비어있으면 채움 */
+      if(!cur.이메일) cur.이메일=tok.value;
+    }else if(f==="휴대폰"){
+      if(!cur.휴대폰) cur.휴대폰=tok.value;
+    }else if(cur[f]!=null){
+      if(!cur[f]) cur[f]=tok.value;
+    }
+  }
+  /* 마지막 레코드 */
+  if(hasMinData(cur)) records.push(cur);
+
+  /* 3단계: 주소 정리 */
+  for(const rec of records){
+    /* 주소 내 중복 제거 (동일 텍스트가 2번 반복된 경우) */
+    if(rec.주소){
+      const addrParts=rec.주소.split(/\s{2,}/);
+      if(addrParts.length>=2){
+        const unique=[...new Set(addrParts.map(a=>a.trim()).filter(a=>a))];
+        rec.주소=unique.join(" ");
+      }
+    }
+    /* _주소2가 있으면: 두 번째(회사주소)를 우선 사용, 첫 번째(자택)가 동일하면 무시 */
+    if(rec._주소2){
+      /* 회사명이 있고 두 번째 주소가 더 길면 회사주소로 간주 */
+      if(rec._주소2.length>rec.주소.length){
+        rec.주소=rec._주소2;
+      }
+      delete rec._주소2;
+    }
+  }
+
+  /* 4단계: 이메일 도메인 기반 동일 회사 레코드 병합
+     — 회사명이 비어있는 레코드의 이메일 도메인이 다른 레코드의 도메인과 일치하면 병합 */
+  function extractDomain(email){
+    if(!email) return "";
+    const m=email.match(/@([\w.-]+)/);
+    if(!m) return "";
+    /* gmail, naver 등 무료 도메인은 병합 기준에서 제외 */
+    const free=new Set(["gmail.com","naver.com","daum.net","hanmail.net","yahoo.com","hotmail.com","outlook.com","kakao.com"]);
+    const d=m[1].toLowerCase();
+    return free.has(d)?"":d;
+  }
+
+  if(records.length>=2){
+    const merged=[];
+    const used=new Set();
+    for(let i=0;i<records.length;i++){
+      if(used.has(i)) continue;
+      const r=records[i];
+      const dom=extractDomain(r.이메일);
+      if(dom){
+        for(let j=i+1;j<records.length;j++){
+          if(used.has(j)) continue;
+          const r2=records[j];
+          const dom2=extractDomain(r2.이메일);
+          /* 같은 도메인이거나, 회사명이 비어있는 레코드면 병합 시도 */
+          if(dom===dom2||((!r2.회사명)&&dom2==="")){
+            /* r2의 비어있지 않은 필드를 r에 보충 */
+            for(const k of Object.keys(r)){
+              if(!r[k]&&r2[k]) r[k]=r2[k];
+            }
+            /* 담당자가 다르면 기존 담당자 유지 (대표자 보충) */
+            if(r2.담당자&&r.담당자&&r2.담당자!==r.담당자){
+              if(!r.대표자) r.대표자=r2.담당자;
+            }
+            used.add(j);
+            console.log("[Vision v3] 병합:",r.회사명,"←",r2.회사명||r2.담당자);
+          }
+        }
+      }
+      merged.push(r);
+    }
+    records.length=0;
+    records.push(...merged);
+  }
+
+  console.log("[Vision v3] 최종 레코드:",records.length,"건");
+  return records.length>=1?records:null;
+}
+
+function makeEmptyClassified(){
+  return {회사명:"",담당자:"",담당직함:"",전화:"",휴대폰:"",이메일:"",사업자번호:"",주소:"",웹주소:"",업종:"",대표자:""};
+}
+
+function hasMinData(rec){
+  return !!(rec.회사명||rec.담당자||rec.이메일||rec.휴대폰||rec.전화);
+}
+
+/* 미분류 텍스트(_text)를 컨텍스트에 따라 필드 추측 */
+function guessTextField(val,curRec){
+  if(!curRec.회사명) return "회사명";
+  /* 영문 이름 패턴이면 담당자로 배정 */
+  if(/^[A-Za-z][-A-Za-z.\s]{1,25}$/.test(val)){
+    if(!curRec.담당자) return "담당자";
+    return "_skip"; /* 이미 담당자가 있으면 무시 */
+  }
+  if(!curRec.업종&&INDUSTRY_SET.has(val)) return "업종";
+  /* ★ 기존: 회사명 폴백으로 잘못된 레코드 분리 유발
+     수정: 미분류 텍스트는 무시하여 잘못된 분리 방지 */
+  return "_skip";
+}
+
+/* 하위 호환: 기존 confirmImages에서 호출하던 함수들 래핑 */
+function parseVisionTable(response){
+  const fullText=response.fullTextAnnotation?.text||
+    response.textAnnotations?.[0]?.description||"";
+  return fullText; /* 문자열 반환 */
+}
+
+function visionRowsToRecords(fullTextOrRows){
+  if(typeof fullTextOrRows==="string"){
+    return parseFullTextToRecords(fullTextOrRows);
+  }
+  /* 배열인 경우(하위 호환) — 문자열로 합쳐서 처리 */
+  if(Array.isArray(fullTextOrRows)){
+    const text=fullTextOrRows.map(r=>Array.isArray(r)?r.join("\t"):r).join("\n");
+    return parseFullTextToRecords(text);
+  }
+  return null;
+}
+
+/* Vision 텍스트(비테이블) → 단건 명함 파싱 */
+function parseVisionText(response){
+  const text=response.fullTextAnnotation?.text||
+    response.textAnnotations?.[0]?.description||"";
+  return text;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   OCR 텍스트 → 기업정보 파싱 (정규식) — 단건 명함용 (폴백)
+   ═══════════════════════════════════════════════════ */
+function parseBusinessCard(text){
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l);
+  const result={회사명:'',담당자:'',담당직함:'',전화:'',휴대폰:'',이메일:'',사업자번호:'',주소:'',웹주소:'',업종:''};
+
+  const bizMatch=text.match(/\d{3}-\d{2}-\d{5}/);
+  if(bizMatch)result.사업자번호=bizMatch[0];
+
+  const emailMatch=text.match(/[\w.-]+@[\w.-]+\.\w{2,}/);
+  if(emailMatch)result.이메일=emailMatch[0];
+
+  const phones=text.match(/(0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4})/g)||[];
+  for(const p of phones){
+    const cleaned=p.replace(/[-.\s]/g,'');
+    if(cleaned.startsWith('010')||cleaned.startsWith('011')||cleaned.startsWith('016')||cleaned.startsWith('017')||cleaned.startsWith('018')||cleaned.startsWith('019')){
+      result.휴대폰=result.휴대폰||p;
+    }else{
+      result.전화=result.전화||p;
+    }
+  }
+
+  const compMatch=text.match(/(?:㈜|주식회사|\(주\))\s*[\w가-힣]+/);
+  if(compMatch)result.회사명=compMatch[0];
+
+  const urlMatch=text.match(/(?:www\.)?[\w-]+\.(?:com|co\.kr|kr|net|org)[\w./]*/i);
+  if(urlMatch)result.웹주소=urlMatch[0];
+
+  const addrMatch=text.match(/(?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)[\s가-힣\d\-.,()]+/);
+  if(addrMatch)result.주소=addrMatch[0];
+
+  return result;
+}
+
+/* ═══════════════════════════════════════════════════
+   ★ Gemini AI 기반 명함/이미지 OCR 텍스트 구조화 파싱
+   — 정규식 대신 AI가 회사명/담당자/직함 등을 정확히 분류
+   ═══════════════════════════════════════════════════ */
+async function parseOcrTextWithAI(ocrText){
+  const prompt=`아래는 명함 또는 업체 정보 이미지에서 OCR로 추출한 텍스트입니다.
+이 텍스트에서 기업/담당자 정보를 정확히 추출하여 JSON으로 반환하세요.
+
+[필드 정의]
+- "회사명": 법인/업체/기관의 공식 명칭. ㈜, (주), 주식회사 등이 포함됨. 번호 접두사(①②③, 1. 2. 등)는 제거할 것.
+- "담당자": 반드시 사람 이름(한글 2~4자 또는 영문 이름). 절대 라벨·부서·직함이 아님.
+- "담당직함": 직책/직위 (대표이사, 이사, 부장, 과장, 대리 등)
+- "전화": 유선 전화번호 (02, 031, 1588 등으로 시작). "T.", "Tel", "전화" 라벨은 제외.
+- "휴대폰": 010/011/016/017/018/019로 시작하는 모바일 번호. +82-10은 010으로 변환. "M.", "Mobile", "HP" 라벨은 제외.
+- "이메일": @가 포함된 이메일 주소. "E.", "E-mail", "Email" 라벨은 제외.
+- "사업자번호": xxx-xx-xxxxx 형식 10자리
+- "주소": 시/도로 시작하는 실제 주소
+- "웹주소": www 또는 http로 시작하는 URL
+- "업종": 사업 분야 (제조, IT, 건설 등)
+- "대표자": 대표이사/대표로 명시된 사람 이름
+
+[반드시 지킬 규칙]
+1. "Mobile.", "M.", "HP", "H.P", "Tel", "T.", "F.", "Fax", "E-mail", "E.", "Email", "Product", "KOREA", "SCHOOL" 등은 필드 라벨이지 담당자가 아닙니다. 담당자에 절대 넣지 마세요.
+2. "사업부", "영업부", "기술부", "영업본부", "환기사업본부", "IAB", "Dnei", "CKG", "WE" 등 부서명·약어는 담당자가 아닙니다.
+3. "조달청 우수제품", "여성기업", "벤처기업", "우수디자인", "ISO", "CE", "KC인증" 등 인증/마크명은 회사명이 아닙니다.
+4. "대표이사", "이사", "COO", "CEO", "부장", "영업본부 | 이사" 등 직함·부서는 회사명이 아닙니다.
+5. 회사명 앞의 번호(①②③⑧, 1. 2. 3. 등)와 기호는 반드시 제거하세요.
+6. ★ 하나의 명함에는 보통 1개의 회사와 1명의 담당자가 있습니다. 같은 명함에 회사명이 여러 개 보여도(그룹사, 협력사, 인증기관 등) 주된 회사 1개만 회사명으로 하고 나머지는 무시하세요. 절대 같은 명함을 2개 레코드로 분리하지 마세요.
+7. ★ 동일한 회사명의 레코드가 중복되지 않도록 하세요. 같은 회사가 여러 번 나오면 정보를 병합하여 1건으로 만드세요.
+8. 정보가 없는 필드는 빈 문자열("")로 두세요. 추측하지 마세요.
+9. 여러 장의 명함이 포함된 리스트/테이블 이미지인 경우에만 여러 레코드를 반환하세요.
+10. "Eco solar", "CARETSTORE", "SCARETLINK" 등 영문 단어는 회사 영문명일 수 있으나, 사람 이름이 아니면 담당자에 넣지 마세요. 담당자는 반드시 한국인 이름(2~4자 한글) 또는 명백한 영문 인명만 해당됩니다.
+
+[OCR 텍스트]
+${ocrText}
+
+[출력] — JSON 배열만 출력, 설명/마크다운 없이:
+[{"회사명":"","담당자":"","담당직함":"","전화":"","휴대폰":"","이메일":"","사업자번호":"","주소":"","웹주소":"","업종":"","대표자":""}]`;
+
+  try{
+    const raw=await callGeminiRaw(prompt);
+    /* JSON 추출: ```json ... ``` 또는 [ ... ] */
+    let jsonStr=raw;
+    const fenced=raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if(fenced) jsonStr=fenced[1];
+    const arrMatch=jsonStr.match(/\[[\s\S]*\]/);
+    if(!arrMatch) throw new Error("JSON 배열 파싱 실패");
+    const arr=JSON.parse(arrMatch[0]);
+    if(!Array.isArray(arr)||arr.length===0) throw new Error("빈 배열");
+    console.log("[AI 파싱] 성공:",arr.length,"건");
+    return arr;
+  }catch(e){
+    console.error("[AI 파싱 오류]",e.message);
+    return null; /* null이면 정규식 폴백 사용 */
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   클라이언트 텍스트 → 기업정보 파싱 (정규식)
+   ═══════════════════════════════════════════════════ */
+function extractInfoFromText(text){
+  const bizNo=text.match(/\d{3}-\d{2}-\d{5}/g);
+  const emails=text.match(/[\w.-]+@[\w.-]+\.\w{2,}/g);
+  const phones=text.match(/(0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4})/g);
+  const urls=text.match(/https?:\/\/[^\s,<>"']+/g);
+  return {사업자번호:(bizNo||[])[0]||"",이메일:(emails||[])[0]||"",전화:(phones||[])[0]||"",웹주소:(urls||[])[0]||""};
+}
+
+/* ═══════════════════════════════════════════════════
+   스프레드시트 컬럼 자동 매핑
+   ═══════════════════════════════════════════════════ */
+const COL_MAP={
+  "회사명":["회사명","회사","업체명","업체","거래처","거래처명","상호","법인명","기업명","company","organization","org","name","이름","Organization - 이름"],
+  "사업자번호":["사업자번호","사업자","사업자등록번호","bizno","business number","Organization - 사업자번호"],
+  "대표자":["대표","대표자","대표이사","대표자명","ceo","representative","Organization - 대표자"],
+  "담당자":["담당자","담당","담당직원","연락담당","contact person","Organization - 담당직원"],
+  "담당직함":["직함","담당직함","직위","title","position","Organization - 담당직함"],
+  "전화":["전화","전화번호","연락처","tel","phone","대표전화","Organization - 전화"],
+  "휴대폰":["휴대폰","핸드폰","모바일","mobile","cell"],
+  "이메일":["이메일","메일","email","e-mail","Organization - 대표 이메일(계산서)"],
+  "주소":["주소","소재지","address","사업장주소","Organization - 주소"],
+  "웹주소":["웹주소","홈페이지","웹사이트","url","website","web","홈페이지주소","Organization - 웹 주소"],
+  "업종":["업종","업태","industry","사업종류","Organization - 업종"],
+  "기업형태":["기업형태","법인구분","기업구분","Organization - 기업형태"]
+};
+
+function mapColumns(headers){
+  const mapping={};
+  for(const[field,aliases] of Object.entries(COL_MAP)){
+    for(const h of headers){
+      const lh=h.toLowerCase().trim();
+      if(aliases.some(a=>lh===a.toLowerCase()||lh.includes(a.toLowerCase()))){
+        mapping[field]=h;break;
+      }
+    }
+  }
+  return mapping;
+}
+
+function sheetRowToRec(row,colMap,src){
+  const r=emptyRec(src);
+  r.회사명=String(row[colMap["회사명"]]||"").trim();
+  r.사업자번호=String(row[colMap["사업자번호"]]||"").trim();
+  r.대표자=String(row[colMap["대표자"]]||"").trim();
+  r.담당자=String(row[colMap["담당자"]]||"").trim();
+  r.담당직함=String(row[colMap["담당직함"]]||"").trim();
+  r.전화=String(row[colMap["전화"]]||"").trim();
+  r.휴대폰=String(row[colMap["휴대폰"]]||"").trim();
+  r.이메일=String(row[colMap["이메일"]]||"").trim();
+  r.주소=String(row[colMap["주소"]]||"").trim();
+  r.웹주소=String(row[colMap["웹주소"]]||"").trim();
+  r.업종=String(row[colMap["업종"]]||"").trim();
+  r.기업형태=String(row[colMap["기업형태"]]||"").trim();
+  r.status="완료";
+  return r;
+}
+
+/* ═══════════════════════════════════════════════════
+   [1] 이미지 — 미리보기 리스트 + OCR 처리
+   ═══════════════════════════════════════════════════ */
+function renderPreview(){
+  const wrap=$("#imgPreview");
+  wrap.innerHTML=pendingImages.map((p,i)=>`
+    <div class="preview-item" data-idx="${i}">
+      <button class="premove" data-idx="${i}">✕</button>
+      <img src="${p.dataUrl}" alt="${esc(p.name)}"/>
+      <div class="pname" title="${esc(p.name)}">${esc(p.name)}</div>
+    </div>
+  `).join("");
+
+  const acts=$("#imgPreviewActions");
+  if(pendingImages.length>0){
+    acts.classList.remove("hidden");
+    $("#imgPreviewCount").textContent=`${pendingImages.length}개 선택됨`;
+  }else{
+    acts.classList.add("hidden");
+  }
+}
+
+/* ★ HEIC → JPEG 변환 (이중 폴백)
+   1차: Canvas (Safari 네이티브 HEIC 지원)
+   2차: heic2any 라이브러리 동적 로딩 (Chrome/Firefox용) */
+function _canvasConvert(blob){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(blob);
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const c=document.createElement("canvas");
+        c.width=img.naturalWidth;
+        c.height=img.naturalHeight;
+        const ctx=c.getContext("2d");
+        ctx.drawImage(img,0,0);
+        const jpegDataUrl=c.toDataURL("image/jpeg",0.92);
+        URL.revokeObjectURL(url);
+        console.log("[HEIC→JPEG] Canvas 변환 성공:",img.naturalWidth,"x",img.naturalHeight);
+        resolve(jpegDataUrl);
+      }catch(e){URL.revokeObjectURL(url);reject(e)}
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("Canvas: 브라우저가 HEIC를 지원하지 않음"))};
+    img.src=url;
+  });
+}
+
+function _blobToDataUrl(blob){
+  return new Promise((res,rej)=>{
+    const rd=new FileReader();
+    rd.onload=e=>res(e.target.result);
+    rd.onerror=()=>rej(new Error("Blob 읽기 실패"));
+    rd.readAsDataURL(blob);
+  });
+}
+
+/* heic2any 동적 로딩 — 여러 CDN 폴백 */
+let _heic2anyPromise=null;
+function _loadHeic2any(){
+  if(typeof heic2any!=="undefined") return Promise.resolve();
+  if(_heic2anyPromise) return _heic2anyPromise;
+
+  const cdnUrls=[
+    "https://unpkg.com/heic2any@0.0.4/dist/heic2any.min.js",
+    "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js"
+  ];
+
+  _heic2anyPromise=(async()=>{
+    for(const url of cdnUrls){
+      try{
+        await new Promise((resolve,reject)=>{
+          const s=document.createElement("script");
+          s.src=url;
+          s.onload=resolve;
+          s.onerror=reject;
+          document.head.appendChild(s);
+        });
+        if(typeof heic2any!=="undefined"){
+          console.log("[heic2any] 로드 성공:",url);
+          return;
+        }
+      }catch(e){
+        console.warn("[heic2any] CDN 실패:",url);
+      }
+    }
+    throw new Error("heic2any 로드 실패 — 모든 CDN 실패");
+  })();
+  return _heic2anyPromise;
+}
+
+async function convertBlobToJpegDataUrl(blob){
+  /* 1차: Canvas (Safari) */
+  try{
+    return await _canvasConvert(blob);
+  }catch(e1){
+    console.log("[HEIC] Canvas 실패:",e1.message,"→ heic2any 동적 로딩 시도");
+  }
+
+  /* 2차: heic2any 동적 로딩 후 변환 (Chrome/Firefox) */
+  try{
+    await _loadHeic2any();
+    const result=await heic2any({blob:blob, toType:"image/jpeg", quality:0.92});
+    const jpegBlob=Array.isArray(result)?result[0]:result;
+    const dataUrl=await _blobToDataUrl(jpegBlob);
+    console.log("[HEIC→JPEG] heic2any 변환 성공, 크기:",Math.round(dataUrl.length/1024),"KB");
+    return dataUrl;
+  }catch(e2){
+    console.error("[HEIC] heic2any 실패:",e2.message);
+    throw new Error("HEIC 변환 실패: "+e2.message);
+  }
+}
+
+/* 파일이 HEIC/HEIF인지 판별 */
+function isHeicFile(name){
+  const ext=(name||"").split(".").pop().toLowerCase();
+  return ext==="heic"||ext==="heif";
+}
+
+async function addImageFiles(files){
+  /* HEIC/HEIF 확장자도 이미지로 인식 (일부 브라우저에서 type이 빈 문자열일 수 있음) */
+  const isImage=f=>{
+    if(f.type.startsWith("image/")) return true;
+    const ext=(f.name||"").split(".").pop().toLowerCase();
+    return ext==="heic"||ext==="heif";
+  };
+  const imgs=Array.from(files).filter(isImage);
+  if(!imgs.length){toast("이미지 파일을 선택해주세요.","error");return}
+
+  for(const f of imgs){
+    const dataUrl=await new Promise(res=>{const rd=new FileReader();rd.onload=e=>res(e.target.result);rd.readAsDataURL(f)});
+    /* ★ HEIC 파일은 원본 Blob도 저장 (OCR 시 createObjectURL 기반 변환에 필요) */
+    pendingImages.push({name:f.name, dataUrl, blob:isHeicFile(f.name)?f:null});
+  }
+  renderPreview();
+  toast(`📷 ${imgs.length}개 이미지 추가됨`,"success");
+}
+
+/* ═══════════════════════════════════════════════════
+   QR코드 인식 — jsQR 기반
+   ═══════════════════════════════════════════════════ */
+
+/* ── QR코드 스캔: dataUrl → QR 텍스트 (없으면 null) ── */
+function scanQRFromDataUrl(dataUrl){
+  return new Promise(resolve=>{
+    if(typeof jsQR==="undefined"){console.warn("[QR] jsQR 라이브러리 미로드");resolve(null);return}
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement("canvas");
+      c.width=img.naturalWidth;
+      c.height=img.naturalHeight;
+      const ctx=c.getContext("2d");
+      ctx.drawImage(img,0,0);
+      const imageData=ctx.getImageData(0,0,c.width,c.height);
+      const qr=jsQR(imageData.data,c.width,c.height,{inversionAttempts:"dontInvert"});
+      if(qr&&qr.data){
+        console.log("[QR] 감지 성공:",qr.data.substring(0,80));
+        resolve(qr.data);
+      }else{
+        /* 이미지가 작거나 QR이 작을 수 있으므로 2배 업스케일 재시도 */
+        if(c.width<600||c.height<600){
+          const c2=document.createElement("canvas");
+          const scale=Math.min(2,1200/Math.max(c.width,c.height));
+          c2.width=Math.round(c.width*scale);
+          c2.height=Math.round(c.height*scale);
+          const ctx2=c2.getContext("2d");
+          ctx2.imageSmoothingEnabled=false;
+          ctx2.drawImage(img,0,0,c2.width,c2.height);
+          const id2=ctx2.getImageData(0,0,c2.width,c2.height);
+          const qr2=jsQR(id2.data,c2.width,c2.height,{inversionAttempts:"attemptBoth"});
+          if(qr2&&qr2.data){console.log("[QR] 업스케일 감지 성공:",qr2.data.substring(0,80));resolve(qr2.data);return}
+        }
+        resolve(null);
+      }
+    };
+    img.onerror=()=>resolve(null);
+    img.src=dataUrl;
+  });
+}
+
+/* ── vCard 파서 → 레코드 필드 매핑 ── */
+function parseVCard(vcardText){
+  const result={회사명:"",담당자:"",담당직함:"",전화:"",휴대폰:"",이메일:"",사업자번호:"",주소:"",웹주소:"",업종:"",대표자:""};
+  const lines=vcardText.replace(/\r\n\s/g,"").split(/\r?\n/);
+
+  for(const line of lines){
+    const [key,...rest]=line.split(":");
+    const val=rest.join(":").trim();
+    if(!val)continue;
+    const upperKey=key.toUpperCase().split(";")[0];
+
+    if(upperKey==="FN"||upperKey==="N"){
+      if(!result.담당자){
+        if(upperKey==="N"){
+          const parts=val.split(";").filter(Boolean);
+          result.담당자=parts.join("").trim();
+        }else{
+          result.담당자=val;
+        }
+      }
+    }
+    else if(upperKey==="ORG"){result.회사명=val.split(";")[0].trim()}
+    else if(upperKey==="TITLE"){result.담당직함=val}
+    else if(upperKey==="TEL"||key.toUpperCase().startsWith("TEL")){
+      const cleanNum=val.replace(/[\s\-()]/g,"");
+      if(/CELL/i.test(key)){result.휴대폰=result.휴대폰||cleanNum}
+      else if(/WORK/i.test(key)){result.전화=result.전화||cleanNum}
+      else{(result.전화?result.휴대폰="":0)||(result.전화=cleanNum)||(result.휴대폰=cleanNum)}
+      /* 빈 필드에 우선 배치 */
+      if(!result.전화&&cleanNum)result.전화=cleanNum;
+      else if(!result.휴대폰&&cleanNum&&result.전화!==cleanNum)result.휴대폰=cleanNum;
+    }
+    else if(upperKey==="EMAIL"||key.toUpperCase().startsWith("EMAIL")){result.이메일=result.이메일||val}
+    else if(upperKey==="ADR"||key.toUpperCase().startsWith("ADR")){
+      const parts=val.split(";").filter(Boolean);
+      result.주소=result.주소||parts.join(" ").trim();
+    }
+    else if(upperKey==="URL"||key.toUpperCase().startsWith("URL")){result.웹주소=result.웹주소||val}
+  }
+  return result;
+}
+
+/* ── QR 데이터 분기 처리 → 레코드 생성 ── */
+async function processQRData(qrText, thumbDataUrl){
+  const rec=emptyRec("QR");
+  rec.thumb=thumbDataUrl;
+  rec.qrSource=true; // QR 출처 플래그
+
+  if(qrText.toUpperCase().startsWith("BEGIN:VCARD")){
+    /* ─ vCard ─ */
+    console.log("[QR] vCard 감지");
+    const parsed=parseVCard(qrText);
+    Object.assign(rec, parsed);
+    rec.status="완료";
+    records.push(rec);
+    render();
+    toast(`📱 QR vCard: ${parsed.회사명||parsed.담당자||"정보"} 추출됨`,"success");
+    return rec;
+  }
+  else if(/^https?:\/\//i.test(qrText)){
+    /* ─ URL → 기존 resolveKorName 활용 ─ */
+    console.log("[QR] URL 감지:",qrText);
+    rec.웹주소=qrText;
+    try{const domain=new URL(qrText).hostname.replace("www.","").split(".")[0];rec.회사명=domain}catch{rec.회사명=qrText}
+    rec.status="대기";
+    records.push(rec);
+    render();
+    toast(`📱 QR URL 감지 — 한글 회사명 추출 중...`,"");
+    /* resolveKorName은 processURLs 내부 함수이므로 동일 로직을 인라인 처리 */
+    await _resolveQRUrl(rec);
+    render();
+    return rec;
+  }
+  else{
+    /* ─ 일반 텍스트 → Gemini AI 파싱 ─ */
+    console.log("[QR] 텍스트 감지:",qrText.substring(0,100));
+    if(GCLOUD_API_KEY && qrText.length>=5){
+      try{
+        const aiResults=await parseOcrTextWithAI(qrText);
+        if(aiResults&&aiResults.length>=1){
+          const parsed=aiResults[0];
+          rec.회사명=parsed.회사명||"";
+          rec.담당자=parsed.담당자||"";
+          rec.담당직함=parsed.담당직함||"";
+          rec.전화=parsed.전화||"";
+          rec.휴대폰=parsed.휴대폰||"";
+          rec.이메일=parsed.이메일||"";
+          rec.사업자번호=parsed.사업자번호||"";
+          rec.대표자=parsed.대표자||"";
+          rec.주소=parsed.주소||"";
+          rec.웹주소=parsed.웹주소||"";
+          rec.업종=parsed.업종||"";
+        }else{
+          rec.회사명=qrText.substring(0,50);
+        }
+      }catch(e){
+        console.warn("[QR AI 파싱 실패]",e.message);
+        rec.회사명=qrText.substring(0,50);
+      }
+    }else{
+      rec.회사명=qrText.substring(0,50);
+    }
+    rec.status="완료";
+    records.push(rec);
+    render();
+    toast(`📱 QR 텍스트: ${rec.회사명||"정보"} 추출됨`,"success");
+    return rec;
+  }
+}
+
+/* ── QR URL → 한글 회사명 추출 (processURLs의 resolveKorName 동일 로직) ── */
+async function _resolveQRUrl(r){
+  const domain=r.회사명||(() => { try { return new URL(r.웹주소).hostname.replace("www.",""); } catch { return r.웹주소; } })();
+
+  // [방법 A] Gemini AI
+  let aiPromise=null;
+  if(GCLOUD_API_KEY){
+    aiPromise=(async()=>{
+      try{
+        const prompt=`다음 웹사이트의 한국어 공식 회사명(법인명)을 알려주세요.
+URL: ${r.웹주소}
+도메인/영문명: ${domain}
+
+규칙:
+- 한국 법인이면 한글 공식 상호명 (예: ㈜삼성전자, (주)현대건설)
+- 외국 기업이면 한국에서 통용되는 한글명 (예: 구글코리아, 마이크로소프트)
+- ㈜, (주) 등 법인 접두사가 있으면 포함
+- 모르면 "UNKNOWN"
+- 회사명만 한 줄로 답변, 설명 없이`;
+        const aiName=(await callGeminiRaw(prompt)).trim().replace(/^["'\`]+|["'\`]+$/g,"").replace(/\n.*/,"").trim();
+        if(aiName&&!/UNKNOWN/i.test(aiName)&&aiName.length>=2&&aiName.length<=50) return aiName;
+      }catch(e){console.warn(`[QR AI 변환 실패] ${domain}:`,e.message)}
+      return null;
+    })();
+  }
+
+  // [방법 B] 프록시 크롤링
+  let crawlPromise=(async()=>{
+    try{
+      const proxyUrl=`/proxy?url=${encodeURIComponent(r.웹주소)}`;
+      const html=await new Promise((resolve,reject)=>{
+        const xhr=new XMLHttpRequest();
+        xhr.open("GET",proxyUrl,true);
+        xhr.timeout=10000;
+        xhr.onload=()=>{try{const j=JSON.parse(xhr.responseText);j.ok?resolve(j.html):reject(new Error(j.error||"프록시 오류"))}catch{reject(new Error("프록시 응답 파싱 실패"))}};
+        xhr.onerror=()=>reject(new Error("프록시 미연결"));
+        xhr.ontimeout=()=>reject(new Error("타임아웃"));
+        xhr.send();
+      });
+      /* extractKorCompanyName 로직 (인라인) */
+      const clean=s=>(s||"").replace(/\s*(공식\s*(홈페이지|사이트|웹)|홈페이지|메인|HOME|MAIN)\s*/gi,"").trim();
+      const isKor=s=>/[가-힣]/.test(s)&&s.length>=2&&s.length<=30;
+      let m=html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i)||html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:site_name["']/i);
+      if(m&&isKor(m[1]))return clean(m[1]);
+      m=html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)||html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+      if(m){const p=m[1].split(/\s*[-|:：·]\s*/).find(s=>isKor(s));if(p){const c=clean(p);if(c.length>=2)return c}}
+      m=html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      if(m){const p=m[1].trim().split(/\s*[-|:：·]\s*/).find(s=>isKor(s));if(p){const c=clean(p);if(c.length>=2)return c}}
+      const corpM=html.match(/(?:주식회사|㈜|\(주\))\s*[가-힣A-Za-z]{2,15}/);
+      if(corpM)return corpM[0].trim();
+      return null;
+    }catch{return null}
+  })();
+
+  const [crawlName,aiName]=await Promise.all([crawlPromise,aiPromise]);
+  if(crawlName){r.회사명=crawlName;console.log(`[QR URL→크롤링] ${domain} → ${crawlName}`)}
+  else if(aiName){r.회사명=aiName;console.log(`[QR URL→AI] ${domain} → ${aiName}`)}
+  else{console.warn(`[QR URL] ${domain} — 한글 회사명 추출 실패, 도메인명 유지`)}
+  r.status="완료";
+  toast(`📱 QR URL: ${r.회사명} 추출 완료`,"success");
+}
+
+async function confirmImages(){
+  if(!pendingImages.length){toast("등록할 이미지가 없습니다.","error");return}
+
+  const progress=$("#ocrProgress");
+  progress.classList.remove("hidden");
+  $("#ocrBar").style.width="0%";
+
+  const useVision=!!GCLOUD_API_KEY;
+  if(useVision){
+    $("#ocrStatus").textContent="Google Vision API로 OCR 처리 중...";
+  }else{
+    $("#ocrStatus").textContent="OCR 엔진 로딩 중... (첫 실행 시 한국어 데이터 다운로드 ~15MB)";
+  }
+
+  /* Tesseract 워커는 Vision API 실패 시 폴백용 */
+  let worker=null;
+
+  let successCount=0;
+  for(let i=0;i<pendingImages.length;i++){
+    const p=pendingImages[i];
+    $("#ocrBar").style.width=`${((i)/pendingImages.length)*100}%`;
+    $("#ocrStatus").textContent=`[${i+1}/${pendingImages.length}] ${p.name} 분석 중...`;
+
+    try{
+      /* ★ QR코드 우선 감지 — OCR 전에 QR 스캔 시도 */
+      if(typeof jsQR!=="undefined" && !isHeicFile(p.name)){
+        const qrData=await scanQRFromDataUrl(p.dataUrl);
+        if(qrData){
+          $("#ocrStatus").textContent=`[${i+1}/${pendingImages.length}] ${p.name} QR코드 감지됨!`;
+          await processQRData(qrData, p.dataUrl);
+          successCount++;
+          continue; // QR로 처리 완료 → OCR 건너뜀
+        }
+      }
+
+      /* ★ HEIC 파일 → Gemini Vision 멀티모달로 직접 OCR+파싱 (변환 불필요) */
+      if(isHeicFile(p.name) && GCLOUD_API_KEY){
+        $("#ocrStatus").textContent=`[${i+1}/${pendingImages.length}] ${p.name} Gemini Vision 분석 중...`;
+        const base64=dataUrlToBase64(p.dataUrl);
+        /* HEIC MIME 타입 보정: 일부 브라우저가 application/octet-stream으로 인식할 수 있음 */
+        let mimeType=p.dataUrl.match(/^data:([^;]+)/)?.[1]||"image/heic";
+        if(mimeType==="application/octet-stream"||!mimeType.startsWith("image/")){
+          mimeType="image/heic";
+          console.log(`[HEIC] MIME 타입 보정: ${p.dataUrl.match(/^data:([^;]+)/)?.[1]} → image/heic`);
+        }
+        const sizeMB=(base64.length*3/4)/(1024*1024);
+        console.log(`[HEIC] ${p.name}: MIME=${mimeType}, base64 크기=${sizeMB.toFixed(1)}MB`);
+        try{
+          const geminiResults=await ocrHeicWithGemini(base64, mimeType);
+          for(const parsed of geminiResults){
+            const r=emptyRec("이미지");
+            r.thumb=p.dataUrl;
+            r.회사명=parsed.회사명||"";
+            r.담당자=parsed.담당자||"";
+            r.담당직함=parsed.담당직함||"";
+            r.전화=parsed.전화||"";
+            r.휴대폰=parsed.휴대폰||"";
+            r.이메일=parsed.이메일||"";
+            r.사업자번호=parsed.사업자번호||"";
+            if(/^대표(이사)?$/.test(parsed.담당직함||"")){
+              r.대표자=parsed.담당자||parsed.대표자||"";
+            }else{
+              r.대표자=parsed.대표자||"";
+            }
+            r.주소=parsed.주소||"";
+            r.웹주소=parsed.웹주소||"";
+            r.업종=parsed.업종||"";
+            r.status="완료";
+            records.push(r);
+          }
+          successCount++;
+          toast(`🤖 Gemini Vision: ${geminiResults.length}건 추출됨`,"success");
+        }catch(gErr){
+          console.error("[Gemini Vision OCR 오류]",p.name,gErr.message);
+          const r=emptyRec("이미지");
+          r.회사명=`(${p.name}: Gemini Vision 오류)`;
+          r.thumb=p.dataUrl;
+          r.status="오류";
+          records.push(r);
+          toast(`❌ ${p.name}: ${gErr.message}`,"error");
+        }
+      }else if(useVision){
+        // ★ 일반 이미지 → Google Vision API + AI 파싱
+        const base64=dataUrlToBase64(p.dataUrl);
+        const visionRes=await callGoogleVision(base64);
+        const ocrFullText=parseVisionText(visionRes);
+
+        /* ★ 항상 AI 파싱을 우선 시도 (테이블/단건 구분 없이) */
+        let aiResults=null;
+        if(GCLOUD_API_KEY && ocrFullText.trim().length>=10){
+          try{
+            $("#ocrStatus").textContent=`[${i+1}/${pendingImages.length}] ${p.name} AI 분석 중...`;
+            aiResults=await parseOcrTextWithAI(ocrFullText);
+          }catch(aiErr){
+            console.warn("[AI 파싱 실패, 정규식 폴백]",aiErr.message);
+          }
+        }
+
+        if(aiResults && aiResults.length>=1){
+          /* ★ AI 파싱 성공 — 정확한 필드 매핑 */
+          for(const parsed of aiResults){
+            const r=emptyRec("이미지");
+            r.thumb=p.dataUrl;
+            r.회사명=parsed.회사명||"";
+            r.담당자=parsed.담당자||"";
+            r.담당직함=parsed.담당직함||"";
+            r.전화=parsed.전화||"";
+            r.휴대폰=parsed.휴대폰||"";
+            r.이메일=parsed.이메일||"";
+            r.사업자번호=parsed.사업자번호||"";
+            if(/^대표(이사)?$/.test(parsed.담당직함||"")){
+              r.대표자=parsed.담당자||parsed.대표자||"";
+            }else{
+              r.대표자=parsed.대표자||"";
+            }
+            r.주소=parsed.주소||"";
+            r.웹주소=parsed.웹주소||"";
+            r.업종=parsed.업종||"";
+            r.status="완료";
+            records.push(r);
+          }
+          successCount++;
+          toast(`🤖 AI: ${aiResults.length}건 추출됨`,"success");
+        }else{
+          /* 정규식 폴백 (AI 실패 시) — 테이블 파싱 → 단건 파싱 순서 */
+          const tableRows=parseVisionTable(visionRes);
+          const tableRecords=visionRowsToRecords(tableRows);
+
+          if(tableRecords&&tableRecords.length>=1){
+            for(const parsed of tableRecords){
+              const r=emptyRec("이미지");
+              r.thumb=p.dataUrl;
+              r.회사명=parsed.회사명||"";
+              r.담당자=parsed.담당자||"";
+              r.담당직함=parsed.담당직함||"";
+              r.전화=parsed.전화||"";
+              r.휴대폰=parsed.휴대폰||"";
+              r.이메일=parsed.이메일||"";
+              r.사업자번호=parsed.사업자번호||"";
+              if(/^대표(이사)?$/.test(parsed.담당직함||"")){
+                r.대표자=parsed.담당자||parsed.대표자||"";
+              }else{
+                r.대표자=parsed.대표자||"";
+              }
+              r.주소=parsed.주소||"";
+              r.웹주소=parsed.웹주소||"";
+              r.업종=parsed.업종||"";
+              r.status="완료";
+              records.push(r);
+            }
+            successCount++;
+            toast(`📊 정규식: ${tableRecords.length}건 추출됨`,"success");
+          }else{
+            const parsed=parseBusinessCard(ocrFullText);
+            const r=emptyRec("이미지");
+            r.thumb=p.dataUrl;
+            r.회사명=parsed.회사명||p.name.replace(/\.[^.]+$/,"");
+            r.담당자=parsed.담당자;
+            r.담당직함=parsed.담당직함;
+            r.전화=parsed.전화;
+            r.휴대폰=parsed.휴대폰;
+            r.이메일=parsed.이메일;
+            r.사업자번호=parsed.사업자번호;
+            r.주소=parsed.주소;
+            r.웹주소=parsed.웹주소;
+            r.업종=parsed.업종;
+            r.status="완료";
+            records.push(r);
+            successCount++;
+          }
+        }
+      }else{
+        // ★ Tesseract.js 폴백 (API 키 없을 때)
+        if(!worker){
+          $("#ocrStatus").textContent="Tesseract OCR 엔진 로딩 중...";
+          worker=await Tesseract.createWorker("kor+eng",1,{
+            logger:m=>{
+              if(m.status==="recognizing text") $("#ocrBar").style.width=`${Math.round(m.progress*100)}%`;
+              else if(m.status) $("#ocrStatus").textContent=m.status;
+            }
+          });
+        }
+        const {data}=await worker.recognize(p.dataUrl);
+        const text=data.text||"";
+        const parsed=parseBusinessCard(text);
+        const r=emptyRec("이미지");
+        r.thumb=p.dataUrl;
+        r.회사명=parsed.회사명||p.name.replace(/\.[^.]+$/,"");
+        r.담당자=parsed.담당자;
+        r.담당직함=parsed.담당직함;
+        r.전화=parsed.전화;
+        r.휴대폰=parsed.휴대폰;
+        r.이메일=parsed.이메일;
+        r.사업자번호=parsed.사업자번호;
+        r.주소=parsed.주소;
+        r.웹주소=parsed.웹주소;
+        r.업종=parsed.업종;
+        r.status="완료";
+        records.push(r);
+        successCount++;
+      }
+    }catch(e){
+      const errMsg=e.message||"OCR 실패";
+      console.error(`[OCR 오류] ${p.name}:`,errMsg);
+      const r=emptyRec("이미지");
+      r.회사명=`(${p.name}: OCR 오류)`;
+      r.thumb=p.dataUrl;
+      r.status="오류";
+      records.push(r);
+      /* 상세 에러를 alert로 표시 (긴 메시지도 확인 가능) */
+      if(errMsg.includes("403")||errMsg.includes("Vision API")){
+        alert(`⚠️ Google Vision API 오류\n\n${errMsg}\n\n[해결 방법]\n1. Google Cloud Console 접속\n2. 'Cloud Vision API' 검색 → 사용 설정\n3. API 키에 IP/리퍼러 제한이 있다면 해제\n4. 프로젝트에 결제가 활성화되어 있는지 확인\n\nhttps://console.cloud.google.com/apis/library/vision.googleapis.com`);
+      }else{
+        toast(`❌ ${p.name}: ${errMsg}`,"error");
+      }
+    }
+    render();
+  }
+
+  if(worker) await worker.terminate();
+  progress.classList.add("hidden");
+  const engine=useVision?"Google Vision":"Tesseract";
+  toast(`📷 ${engine}: ${successCount}/${pendingImages.length}개 이미지 OCR 완료`,"success");
+  pendingImages=[];
+  renderPreview();
+  render();
+}
+
+/* ═══════════════════════════════════════════════════
+   [2] 문서 처리 — 클라이언트 파싱 + 인코딩 수정
+   ═══════════════════════════════════════════════════ */
+async function processDocuments(files){
+  if(!files.length){toast("문서 파일을 선택해주세요.","error");return}
+  const arr=Array.from(files);
+  $("#pExtract").classList.remove("hidden");
+
+  for(let i=0;i<arr.length;i++){
+    const f=arr[i];
+    $("#extNum").textContent=`${i+1}/${arr.length}`;
+    $("#extBar").style.width=`${((i+1)/arr.length)*100}%`;
+
+    try{
+      const ext=f.name.split(".").pop().toLowerCase();
+
+      if(ext==="csv"||ext==="xlsx"||ext==="xls"){
+        let text,wb;
+
+        if(ext==="csv"){
+          // CSV: UTF-8 먼저 시도, 그 다음 EUC-KR
+          text=await f.text();
+          if(text.includes('ï¿½')||/[À-ÿ]{3,}/.test(text.substring(0,200))){
+            // 인코딩 문제 감지, EUC-KR 재시도
+            const ab=await f.arrayBuffer();
+            try{
+              const decoder=new TextDecoder('euc-kr');
+              text=decoder.decode(ab);
+            }catch{
+              // EUC-KR 실패 시 원본 유지
+            }
+          }
+          wb=XLSX.read(text,{type:"string"});
+        }else{
+          // XLSX: codepage 지정
+          const ab=await f.arrayBuffer();
+          wb=XLSX.read(ab,{type:"array",codepage:65001});
+        }
+
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const json=XLSX.utils.sheet_to_json(ws,{defval:""});
+
+        if(!json.length){
+          const r=emptyRec("문서");r.회사명=`(${f.name}: 데이터 없음)`;r.status="오류";records.push(r);render();continue;
+        }
+
+        const headers=Object.keys(json[0]);
+        const colMap=mapColumns(headers);
+        if(!colMap["회사명"])colMap["회사명"]=headers[0];
+
+        let added=0;
+        for(const row of json){
+          const r=sheetRowToRec(row,colMap,"문서");
+          if(!r.회사명&&!r.이메일&&!r.전화)continue;
+          records.push(r);added++;
+        }
+        toast(`📄 ${f.name}: ${added}건 추출 완료`,"success");
+        render();
+
+      }else if(ext==="pdf"){
+        const ab=await f.arrayBuffer();
+        const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+        const pages=[];
+        for(let p=1;p<=Math.min(pdf.numPages,20);p++){
+          const page=await pdf.getPage(p);
+          const tc=await page.getTextContent();
+          pages.push(tc.items.map(it=>it.str).join(" "));
+        }
+        const text=pages.join("\n");
+
+        if(!text.trim()){
+          const r=emptyRec("문서");r.회사명=`(${f.name}: 내용 없음)`;r.status="오류";records.push(r);render();continue;
+        }
+
+        const info=extractInfoFromText(text);
+        const r=emptyRec("문서");
+        r.회사명=f.name.replace(/\.[^.]+$/,"");
+        r.사업자번호=info.사업자번호;r.이메일=info.이메일;r.전화=info.전화;r.웹주소=info.웹주소;
+        r.status="대기";
+        records.push(r);
+        toast(`📄 ${f.name}: 등록 완료`,"success");
+        render();
+
+      }else{
+        const text=await f.text();
+        if(!text.trim()){
+          const r=emptyRec("문서");r.회사명=`(${f.name}: 내용 없음)`;r.status="오류";records.push(r);render();continue;
+        }
+
+        const lines=text.split("\n").filter(l=>l.trim());
+        if(lines.length>1&&lines[0].includes(",")){
+          const wb=XLSX.read(text,{type:"string"});
+          const ws=wb.Sheets[wb.SheetNames[0]];
+          const json=XLSX.utils.sheet_to_json(ws,{defval:""});
+          if(json.length){
+            const headers=Object.keys(json[0]);
+            const colMap=mapColumns(headers);
+            if(!colMap["회사명"])colMap["회사명"]=headers[0];
+            let added=0;
+            for(const row of json){
+              const r=sheetRowToRec(row,colMap,"문서");
+              if(!r.회사명&&!r.이메일&&!r.전화)continue;
+              records.push(r);added++;
+            }
+            toast(`📄 ${f.name}: ${added}건 추출 완료`,"success");
+            render();continue;
+          }
+        }
+
+        const info=extractInfoFromText(text);
+        const r=emptyRec("문서");
+        r.회사명=f.name.replace(/\.[^.]+$/,"");
+        r.사업자번호=info.사업자번호;r.이메일=info.이메일;r.전화=info.전화;r.웹주소=info.웹주소;
+        r.status="대기";
+        records.push(r);
+        toast(`📄 ${f.name}: 등록 완료`,"success");
+        render();
+      }
+    }catch(e){
+      const r=emptyRec("문서");r.회사명=`(${f.name}: ${e.message})`;r.status="오류";records.push(r);render();
+    }
+  }
+  $("#pExtract").classList.add("hidden");
+  render();
+}
+
+/* ═══════════════════════════════════════════════════
+   [3] URL 처리 — 즉시 등록
+   ═══════════════════════════════════════════════════ */
+async function processURLs(urls){
+  let added=0;
+  const newRecs = [];
+  for(const url of urls){
+    const u=url.trim();if(!u)continue;
+    const r=emptyRec("URL");
+    r.웹주소=u;
+    try{const domain=new URL(u).hostname.replace("www.","").split(".")[0];r.회사명=domain}catch{r.회사명=u}
+    r.status="대기";
+    records.push(r);added++;
+    newRecs.push(r);
+  }
+  if(!added)return;
+  toast(`🔗 URL ${added}건 등록 — 한글 회사명 추출 중...`,"success");
+  render();
+
+  /* ── 프록시 경유 웹페이지 가져오기 ── */
+  async function fetchViaProxy(url) {
+    const proxyUrl = `/proxy?url=${encodeURIComponent(url)}`;
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", proxyUrl, true);
+      xhr.timeout = 10000;
+      xhr.onload = () => {
+        try { const j=JSON.parse(xhr.responseText); j.ok ? resolve(j.html) : reject(new Error(j.error||"프록시 오류")); }
+        catch { reject(new Error("프록시 응답 파싱 실패")); }
+      };
+      xhr.onerror = () => reject(new Error("프록시 미연결"));
+      xhr.ontimeout = () => reject(new Error("타임아웃"));
+      xhr.send();
+    });
+  }
+
+  /* ── HTML에서 한글 회사명 추출 (6단계) ── */
+  function extractKorCompanyName(html) {
+    const clean = s => (s||"").replace(/\s*(공식\s*(홈페이지|사이트|웹)|홈페이지|메인|HOME|MAIN)\s*/gi,"").trim();
+    const isKor = s => /[가-힣]/.test(s) && s.length >= 2 && s.length <= 30;
+
+    // 1) og:site_name
+    let m = html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i)
+         || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:site_name["']/i);
+    if (m && isKor(m[1])) return clean(m[1]);
+
+    // 2) og:title
+    m = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
+     || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+    if (m) { const p=m[1].split(/\s*[-|:：·]\s*/).find(s=>isKor(s)); if(p) { const c=clean(p); if(c.length>=2) return c; } }
+
+    // 3) <title>
+    m = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (m) { const p=m[1].trim().split(/\s*[-|:：·]\s*/).find(s=>isKor(s)); if(p) { const c=clean(p); if(c.length>=2) return c; } }
+
+    // 4) header/nav/footer — 로고 alt, 링크 텍스트
+    for (const tag of ["header","nav","footer"]) {
+      const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`,"gi");
+      let sm;
+      while ((sm=re.exec(html))!==null) {
+        const sec=sm[1];
+        const alt=sec.match(/<img[^>]+alt=["']([^"']*[가-힣][^"']*)["']/i);
+        if(alt){ const n=alt[1].replace(/\s*(로고|logo|CI)\s*/gi,"").trim(); if(isKor(n)) return n; }
+        const lnk=sec.match(/<a[^>]*href=["'][^"']*["'][^>]*>\s*([^<]*[가-힣][^<]{0,18})\s*<\/a>/i);
+        if(lnk){ const n=lnk[1].trim(); if(isKor(n) && !/메뉴|로그인|회원|고객|문의|검색|장바구니/.test(n)) return n; }
+      }
+    }
+
+    // 5) copyright ©
+    const copyM = html.match(/(?:©|ⓒ|copyright)\s*(?:\d{4}\s*)?([^<\n]{2,40})/i);
+    if (copyM && /[가-힣]/.test(copyM[1])) {
+      let n=copyM[1].replace(/all\s*rights?\s*reserved\.?|inc\.?|co\.?,?\s*ltd\.?|corp\.?/gi,"").replace(/^\s*[.,\s]+|[.,\s]+$/g,"").trim();
+      if(isKor(n)) return n;
+    }
+
+    // 6) 페이지 전체에서 "주식회사 ○○" / "㈜○○" / "(주)○○" 패턴 검색
+    const corpM = html.match(/(?:주식회사|㈜|\(주\))\s*[가-힣A-Za-z]{2,15}/);
+    if (corpM) return corpM[0].trim();
+
+    return null;
+  }
+
+  /* ── 개별 URL 한글 회사명 추출: AI 우선 + 프록시 병렬 ── */
+  async function resolveKorName(r) {
+    const domain = r.회사명 || (() => { try { return new URL(r.웹주소).hostname.replace("www.",""); } catch { return r.웹주소; } })();
+
+    // [방법 A] Gemini AI — 가장 확실 (API 키가 있고 localhost에서 실행 시)
+    let aiPromise = null;
+    if (GCLOUD_API_KEY) {
+      aiPromise = (async () => {
+        try {
+          const prompt = `다음 웹사이트의 한국어 공식 회사명(법인명)을 알려주세요.
+URL: ${r.웹주소}
+도메인/영문명: ${domain}
+
+규칙:
+- 한국 법인이면 한글 공식 상호명 (예: ㈜삼성전자, (주)현대건설)
+- 외국 기업이면 한국에서 통용되는 한글명 (예: 구글코리아, 마이크로소프트)
+- ㈜, (주) 등 법인 접두사가 있으면 포함
+- 모르면 "UNKNOWN"
+- 회사명만 한 줄로 답변, 설명 없이`;
+          const aiName = (await callGeminiRaw(prompt)).trim().replace(/^["'`]+|["'`]+$/g,"").replace(/\n.*/,"").trim();
+          if (aiName && !/UNKNOWN/i.test(aiName) && aiName.length >= 2 && aiName.length <= 50) return aiName;
+        } catch (e) { console.warn(`[AI 변환 실패] ${domain}:`, e.message); }
+        return null;
+      })();
+    }
+
+    // [방법 B] 프록시 크롤링 (서버가 실행 중일 때만)
+    let crawlPromise = (async () => {
+      try {
+        const html = await fetchViaProxy(r.웹주소);
+        return extractKorCompanyName(html);
+      } catch { return null; }
+    })();
+
+    // 병렬 실행: 둘 중 먼저 성공한 것 사용 (크롤링 우선, AI 보완)
+    const [crawlName, aiName] = await Promise.all([crawlPromise, aiPromise]);
+
+    if (crawlName) {
+      r.회사명 = crawlName;
+      console.log(`[URL→크롤링] ${domain} → ${crawlName}`);
+    } else if (aiName) {
+      r.회사명 = aiName;
+      console.log(`[URL→AI] ${domain} → ${aiName}`);
+    } else {
+      console.warn(`[URL] ${domain} — 한글 회사명 추출 실패, 도메인명 유지`);
+    }
+    r.status = "완료";
+  }
+
+  // 순차 처리 (API rate limit 고려, 1건씩)
+  for (let i = 0; i < newRecs.length; i++) {
+    toast(`🔗 [${i+1}/${newRecs.length}] ${newRecs[i].웹주소} 회사명 추출 중...`,"");
+    await resolveKorName(newRecs[i]);
+    render();
+  }
+  toast(`🔗 회사명 추출 완료 (${newRecs.length}건)`,"success");
+}
+
+/* ═══════════════════════════════════════════════════
+   SalesMap 엑셀 출력
+   ═══════════════════════════════════════════════════ */
+function exportExcel(){
+  const exh=$("#exhInput").value;
+  const now=new Date();
+  const ds=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}`;
+  const fname=`salesmap_${ds}_${String(exportSeq++).padStart(3,"0")}.xlsx`;
+
+  const rows=records.map(r=>({
+    "Organization - 이름":r.회사명,
+    "Organization - 사업자번호":r.사업자번호,
+    "Organization - 대표자명":r.대표자,
+    "Organization - 담당직원":r.담당자,
+    "Organization - 담당직함":r.담당직함,
+    "Organization - 대표 이메일(계산서)":r.이메일,
+    "Organization - 전화":r.전화||r.휴대폰,
+    "Organization - 주소":r.주소,
+    "Organization - 웹 주소":r.웹주소,
+    "Organization - 기업형태":r.기업형태,
+    "Organization - 업종":r.업종,
+    "Organization - 유입경로":"오프/행사",
+    "Organization - 유입경로_상세":exh,
+    "Organization - FlowScore":r.flowScore,
+    "Organization - 매출(억)":r.매출,
+    "Organization - 영업이익":r.영업이익,
+    "People - 이름":r.담당자,
+    "People - 전화":r.휴대폰||r.전화,
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"세일즈맵");
+  ws["!cols"]=Object.keys(rows[0]||{}).map(k=>({wch:Math.max(k.length+4,14)}));
+  XLSX.writeFile(wb,fname);
+  toast(`⬇ ${fname} 다운로드 완료`,"success");
+}
+
+/* ═══════════════════════════════════════════════════
+   이벤트 바인딩
+   ═══════════════════════════════════════════════════ */
+// 탭 전환
+document.querySelectorAll(".itab").forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll(".itab").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll(".ipanel").forEach(p=>p.classList.add("hidden"));
+  $(`#panel-${btn.dataset.tab}`).classList.remove("hidden");
+});
+
+// 이미지
+$("#imgSelectBtn").onclick=e=>{e.stopPropagation();$("#imgInput").click()};
+$("#dropImg").onclick=()=>$("#imgInput").click();
+$("#dropImg").ondragover=e=>{e.preventDefault();$("#dropImg").classList.add("on")};
+$("#dropImg").ondragleave=()=>$("#dropImg").classList.remove("on");
+$("#dropImg").ondrop=e=>{e.preventDefault();$("#dropImg").classList.remove("on");addImageFiles(e.dataTransfer.files)};
+$("#imgInput").onchange=e=>{addImageFiles(e.target.files);e.target.value=""};
+$("#imgConfirmBtn").onclick=confirmImages;
+
+/* ★ API 연결 테스트 버튼 */
+$("#apiTestBtn").onclick=async()=>{
+  const btn=$("#apiTestBtn");
+  const origText=btn.textContent;
+  btn.textContent="⏳ 테스트 중...";
+  btn.disabled=true;
+  try{
+    const r=await testApiConnection();
+    const msg=r.details.join("\n");
+    if(r.network && r.visionApi && r.geminiApi){
+      toast("✅ 모든 API 연결 정상!\n"+msg,"success");
+    }else if(!r.network){
+      toast("❌ 인터넷 연결 불가\n"+msg,"error");
+    }else{
+      toast("⚠️ 일부 API 연결 문제\n"+msg,"error");
+    }
+    console.log("[API 연결 테스트 결과]",msg);
+  }catch(e){
+    toast("테스트 오류: "+e.message,"error");
+  }finally{
+    btn.textContent=origText;
+    btn.disabled=false;
+  }
+};
+$("#imgClearBtn").onclick=()=>{pendingImages=[];renderPreview();toast("미리보기 초기화","")};
+// 미리보기 삭제
+$("#imgPreview").onclick=e=>{
+  const btn=e.target.closest(".premove");
+  if(btn){pendingImages.splice(+btn.dataset.idx,1);renderPreview()}
+};
+
+// 문서
+$("#docSelectBtn").onclick=e=>{e.stopPropagation();$("#docInput").click()};
+$("#dropDoc").onclick=()=>$("#docInput").click();
+$("#dropDoc").ondragover=e=>{e.preventDefault();$("#dropDoc").classList.add("on")};
+$("#dropDoc").ondragleave=()=>$("#dropDoc").classList.remove("on");
+$("#dropDoc").ondrop=e=>{e.preventDefault();$("#dropDoc").classList.remove("on");processDocuments(e.dataTransfer.files)};
+$("#docInput").onchange=e=>{processDocuments(e.target.files);e.target.value=""};
+
+// URL
+$("#urlAddBtn").onclick=()=>{
+  const urls=$("#urlArea").value.split("\n").map(u=>u.trim()).filter(u=>u);
+  if(!urls.length){toast("URL을 입력하세요.","error");return}
+  processURLs(urls);
+  $("#urlArea").value="";
+};
+
+// 체크박스
+$("#ckAll").onchange=()=>{const v=$("#ckAll").checked;records.forEach(r=>r.checked=v);render()};
+$("#tBody").onchange=e=>{if(e.target.classList.contains("rck")){const r=records.find(x=>x.id===e.target.dataset.id);if(r)r.checked=e.target.checked;render()}};
+
+// 테이블 버튼 (삭제 + 구글 검색)
+$("#tBody").onclick=e=>{
+  const rmBtn=e.target.closest(".rm-btn");
+  if(rmBtn){records=records.filter(r=>r.id!==rmBtn.dataset.id);render();return}
+  const gBtn=e.target.closest(".gsearch-btn");
+  if(gBtn){const rec=records.find(r=>r.id===gBtn.dataset.id);if(rec)googleSearch(rec)}
+};
+
+// 액션 버튼
+$("#searchBtn").onclick=aiSearchAll;
+$("#exportBtn").onclick=exportExcel;
+$("#resetBtn").onclick=()=>{records=[];pendingImages=[];renderPreview();$("#ckAll").checked=false;render()};
+
+// AI 검색 중지 버튼
+$("#aiSearchStop").onclick = () => {
+  aiSearchAborted = true;
+  /* 진행 중이던 레코드를 대기로 되돌리기 */
+  records.forEach(r => { if (r.status === "진행") r.status = "대기"; });
+  render();
+  toast("AI 검색 중지됨", "error");
+};
+
+render();
+</script>
+</body>
+</html>
